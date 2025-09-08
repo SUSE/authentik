@@ -118,7 +118,7 @@ class OutgoingSyncProviderStatusMixin:
             uid=f"{provider.name}:{_object_type._meta.model_name}:{pk}:manual",
         )
         try:
-            msg.get_result(block=True)
+            msg.get_result(block=True, timeout=60_000)
         except ResultFailure:
             pass
         task: Task = msg.options["task"]
