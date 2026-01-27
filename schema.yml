@@ -39357,6 +39357,9 @@ components:
           type: object
           additionalProperties: {}
           nullable: true
+        pending_user_identifier:
+          type: string
+          nullable: true
       required:
       - flow_designation
       - password_fields
