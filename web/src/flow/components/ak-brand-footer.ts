@@ -44,10 +44,12 @@ export class BrandLinks extends AKElement {
             aria-label=${msg("Site links")}
             class="pf-c-list pf-m-inline"
             part="list"
-            data-count=${links.length}
+            data-count=${links.length + 1}
         >
+            <li part="list-item" data-index=0 data-kind="text" data-track-name="start"><span>© ${new Date().getFullYear()} SUSE, All Rights Reserved</span></li>
             ${map(links, (link, idx) => {
                 const children = sanitizeHTML(BrandedHTMLPolicy, link.name);
+                const idx = idx + 1;
 
                 return html`<li
                     part="list-item"
