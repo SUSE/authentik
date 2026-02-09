@@ -19,8 +19,18 @@ from authentik.lib.sync.outgoing.models import OutgoingSyncProvider
 from authentik.lib.utils.time import timedelta_from_string, timedelta_string_validator
 from authentik.policies.engine import PolicyEngine
 from authentik.providers.scim.clients.auth import SCIMTokenAuth
+try:
+    from authentik_suse.scim.clients.salesforce_auth import SUSESCIMOAuth2Handler, SUSE_OAUTH_NEEDLE
+    IS_SUSE = True
+except ImportError:
+    IS_SUSE = False
 
 LOGGER = get_logger()
+
+if IS_SUSE:
+    LOGGER.warning('Operating with SUSE extras.')
+else:
+    LOGGER.warning('Operating without SUSE extras.')
 
 
 class SCIMProviderUser(InternallyManagedMixin, SerializerModel):
@@ -141,6 +151,9 @@ class SCIMProvider(OutgoingSyncProvider, BackchannelProvider):
     )
 
     def scim_auth(self) -> AuthBase:
+        if IS_SUSE and self.token == SUSE_OAUTH_NEEDLE:
+            return SUSESCIMOAuth2Handler(self)
+
         if self.auth_mode == SCIMAuthenticationMode.OAUTH:
             try:
                 from authentik.enterprise.providers.scim.auth_oauth2 import SCIMOAuthAuth
