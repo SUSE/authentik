@@ -34,11 +34,11 @@ export class BrandLinks extends AKElement {
 
     render() {
         const links = [
-            ...this.links,
             {
-                name: msg("Powered by authentik"),
+                name: "",
                 href: null,
             },
+            ...this.links,
         ];
         return html`<ul
             aria-label=${msg("Site links")}
@@ -47,13 +47,13 @@ export class BrandLinks extends AKElement {
             data-count=${links.length}
         >
             ${map(links, (link, idx) => {
-                const children = sanitizeHTML(BrandedHTMLPolicy, link.name);
+                const children = idx === 0 ? `© ${new Date().getFullYear()} SUSE, All Rights Reserved` : sanitizeHTML(BrandedHTMLPolicy, link.name);
 
                 return html`<li
                     part="list-item"
                     data-index=${idx}
                     data-kind=${link.href ? "link" : "text"}
-                    data-track-name=${idx === 0 ? "start" : idx === links.length - 1 ? "end" : idx}
+                    data-track-name=${idx === links.length - 1 ? "end" : idx}
                 >
                     ${link.href
                         ? html`<a part="list-item-link" href=${link.href}>${children}</a>`
