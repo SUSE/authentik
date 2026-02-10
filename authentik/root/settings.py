@@ -568,6 +568,8 @@ CONFIG.log("info", "Booting authentik", version=authentik_version())
 _filter_and_update(SHARED_APPS + TENANT_APPS)
 _update_settings("data.user_settings")
 
+_update_settings("authentik.suse.settings")
+
 MIDDLEWARE = list(OrderedDict.fromkeys(MIDDLEWARE_FIRST + MIDDLEWARE + MIDDLEWARE_LAST))
 SHARED_APPS = list(OrderedDict.fromkeys(SHARED_APPS + TENANT_APPS))
 INSTALLED_APPS = list(OrderedDict.fromkeys(SHARED_APPS + TENANT_APPS))
