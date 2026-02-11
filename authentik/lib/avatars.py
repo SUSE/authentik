@@ -28,7 +28,7 @@ SVG_XML_NS = "http://www.w3.org/2000/svg"
 SVG_NS_MAP = {None: SVG_XML_NS}
 # Match fonts used in web UI
 SVG_FONTS = [
-    "'RedHatText'",
+    "'SUSE'",
     "'Overpass'",
     "overpass",
     "helvetica",
