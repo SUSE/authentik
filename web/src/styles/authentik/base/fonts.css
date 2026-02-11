@@ -2,14 +2,14 @@
 
 :root {
     --ak-generic-serif: serif;
-    --ak-generic-sans-serif: "RedHatText", sans-serif;
-    --ak-generic-monospace: "RedHatMono", "Fira Code", "Courier New", monospace;
+    --ak-generic-sans-serif: "SUSE", sans-serif;
+    --ak-generic-monospace: "SUSEMono", "Fira Code", "Courier New", monospace;
     --ak-generic-symbols: "Noto Sans Symbols", "Segoe UI Symbol", "Apple Symbols", sans-serif;
     --ak-generic-emoji:
         "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", emoji, sans-serif;
     --ak-generic-body: var(--ak-generic-sans-serif);
     --ak-generic-heading: var(--ak-generic-body);
-    --ak-generic-display: "RedHatDisplay", var(--ak-generic-heading);
+    --ak-generic-display: "SUSE", var(--ak-generic-heading);
 }
 
 /* #endregion */
@@ -30,8 +30,8 @@
     --pf-global--FontFamily--sans-serif: var(--ak-font-family-sans-serif);
     --pf-global--FontFamily--heading--sans-serif: var(--ak-generic-display);
     --pf-global--FontFamily--monospace: var(--ak-font-family-monospace);
-    --pf-global--FontFamily--redhat-updated--sans-serif: var(--ak-font-family-sans-serif);
-    --pf-global--FontFamily--redhat-updated--heading--sans-serif: var(--ak-generic-display);
+    --pf-global--FontFamily--suse-updated--sans-serif: var(--ak-font-family-sans-serif);
+    --pf-global--FontFamily--suse-updated--heading--sans-serif: var(--ak-generic-display);
 }
 
 /* #endregion */
