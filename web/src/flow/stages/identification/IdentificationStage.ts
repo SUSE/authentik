@@ -406,9 +406,9 @@ export class IdentificationStage extends BaseStage<
         const uiFields: { [key: string]: string } = {
             [UserFieldsEnum.Username]: msg("Username"),
             [UserFieldsEnum.Email]: msg("Email"),
-            [UserFieldsEnum.Upn]: msg("UPN"),
+            [UserFieldsEnum.Upn]: null,
         };
-        const label = OR_LIST_FORMATTERS.format(fields.map((f) => uiFields[f]));
+        const label = OR_LIST_FORMATTERS.format(fields.filter(f => uiFields[f]).map((f) => uiFields[f]));
 
         // Check if passkey login is enabled to add webauthn to autocomplete
         const passkeyChallenge = (
