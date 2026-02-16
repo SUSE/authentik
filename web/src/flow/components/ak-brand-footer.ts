@@ -56,7 +56,7 @@ export class BrandLinks extends AKElement {
                     data-track-name=${idx === links.length - 1 ? "end" : idx}
                 >
                     ${link.href
-                        ? html`<a part="list-item-link" href=${link.href}>${children}</a>`
+                        ? html`<a part="list-item-link" target="_blank" href=${link.href}>${children}</a>`
                         : children}
                 </li>`;
             })}
