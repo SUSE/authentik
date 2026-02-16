@@ -39,7 +39,7 @@ export class BrandLinks extends AKElement {
                 const children = sanitizeHTML(BrandedHTMLPolicy, link.name);
 
                 if (link.href) {
-                    return html`<li><a href="${link.href}">${children}</a></li>`;
+                    return html`<li><a target="_blank" href="${link.href}">${children}</a></li>`;
                 }
 
                 return html`<li part="list-item">
