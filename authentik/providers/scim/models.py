@@ -19,8 +19,10 @@ from authentik.lib.sync.outgoing.models import OutgoingSyncProvider
 from authentik.lib.utils.time import timedelta_from_string, timedelta_string_validator
 from authentik.policies.engine import PolicyEngine
 from authentik.providers.scim.clients.auth import SCIMTokenAuth
+
 try:
-    from authentik_suse.scim.clients.salesforce_auth import SUSESCIMOAuth2Handler, SUSE_OAUTH_NEEDLE
+    from authentik_suse.scim.clients.salesforce_auth import SUSE_OAUTH_NEEDLE, SUSESCIMOAuth2Handler
+
     IS_SUSE = True
 except ImportError:
     IS_SUSE = False
@@ -28,9 +30,9 @@ except ImportError:
 LOGGER = get_logger()
 
 if IS_SUSE:
-    LOGGER.warning('Operating with SUSE extras.')
+    LOGGER.warning("Operating with SUSE extras.")
 else:
-    LOGGER.warning('Operating without SUSE extras.')
+    LOGGER.warning("Operating without SUSE extras.")
 
 
 class SCIMProviderUser(InternallyManagedMixin, SerializerModel):
