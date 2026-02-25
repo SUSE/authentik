@@ -290,6 +290,7 @@ module = [
   "lifecycle.*",
   "tests.e2e.*",
   "tests.integration.*",
+  "tests.openid_conformance.*",
 ]
 ignore_errors = true
 
