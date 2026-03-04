@@ -42,7 +42,6 @@ import PFFormControl from "@patternfly/patternfly/components/FormControl/form-co
 import PFInputGroup from "@patternfly/patternfly/components/InputGroup/input-group.css";
 import PFLogin from "@patternfly/patternfly/components/Login/login.css";
 import PFTitle from "@patternfly/patternfly/components/Title/title.css";
-import PFBase from "@patternfly/patternfly/patternfly-base.css";
 
 export const PasswordManagerPrefill: {
     password?: string;
@@ -60,7 +59,6 @@ export class IdentificationStage extends BaseStage<
     IdentificationChallengeResponseRequest
 > {
     static styles: CSSResult[] = [
-        PFBase,
         PFAlert,
         PFInputGroup,
         PFLogin,
@@ -423,7 +421,7 @@ export class IdentificationStage extends BaseStage<
                 ? html`
                       <p>
                           ${msg(
-                              "Enter the email associated with your account, and we'll send you a link to reset your password.",
+                              "Enter the email address or username associated with your account.",
                           )}
                       </p>
                   `
@@ -439,7 +437,9 @@ export class IdentificationStage extends BaseStage<
                     autocomplete=${autocomplete}
                     spellcheck="false"
                     class="pf-c-form-control"
-                    value=${this.#rememberMe?.username ?? ""}
+                    value=${this.#rememberMe?.username ??
+                    this.challenge.pendingUserIdentifier ??
+                    ""}
                     required
                 />
                 ${this.#rememberMe.render()}

@@ -2,10 +2,12 @@
 
 import socket
 from collections.abc import Callable
-from functools import lru_cache, wraps
+from functools import cached_property, lru_cache, wraps
 from json import JSONDecodeError, dumps, loads
 from os import environ, getenv
+from pathlib import Path
 from sys import stderr
+from tempfile import gettempdir
 from time import sleep
 from typing import Any
 from urllib.parse import urlencode
@@ -16,7 +18,9 @@ from django.db import connection
 from django.db.migrations.loader import MigrationLoader
 from django.test.testcases import TransactionTestCase
 from django.urls import reverse
+from docker.models.containers import Container
 from dramatiq import get_broker
+from requests import RequestException
 from selenium import webdriver
 from selenium.common.exceptions import (
     DetachedShadowRootException,
@@ -38,6 +42,7 @@ from structlog.stdlib import get_logger
 from authentik.core.api.users import UserSerializer
 from authentik.core.models import User
 from authentik.core.tests.utils import create_test_admin_user
+from authentik.lib.utils.http import get_http_session
 from authentik.tasks.test import use_test_broker
 from tests.docker import DockerTestCase
 
@@ -79,7 +84,9 @@ class SeleniumTestCase(DockerTestCase, StaticLiveServerTestCase):
     def _get_driver(self) -> WebDriver:
         count = 0
         opts = webdriver.ChromeOptions()
+        opts.accept_insecure_certs = True
         opts.add_argument("--disable-search-engine-choice-screen")
+        opts.add_extension(self._get_chrome_extension())
         # This breaks selenium when running remotely...?
         # opts.set_capability("goog:loggingPrefs", {"browser": "ALL"})
         opts.add_experimental_option(
@@ -100,6 +107,31 @@ class SeleniumTestCase(DockerTestCase, StaticLiveServerTestCase):
                 self.logger.warning("Failed to setup webdriver", exc=exc)
                 count += 1
         raise ValueError(f"Webdriver failed after {RETRIES}.")
+
+    def _get_chrome_extension(self):
+        path = Path(gettempdir()) / "ak-chrome.crx"
+        try:
+            self.logger.info("Downloading chrome extension...", path=path)
+            res = get_http_session().get(
+                "https://pkg.goauthentik.io/packages/authentik_browser-ext/browser-ext/authentik_chrome.zip",
+                stream=True,
+            )
+            with open(path, "w+b") as _ext:
+                for chunk in res.iter_content(chunk_size=1024):
+                    if chunk:
+                        _ext.write(chunk)
+        except RequestException as exc:
+            if path.exists() and not IS_CI:
+                self.logger.info(
+                    "Failed to download chrome extension, using cached copy", path=path
+                )
+                return path
+            raise exc
+        return path
+
+    @cached_property
+    def driver_container(self) -> Container:
+        return self.docker_client.containers.list(filters={"label": "io.goauthentik.tests"})[0]
 
     @classmethod
     def _pre_setup(cls):
@@ -132,11 +164,20 @@ class SeleniumTestCase(DockerTestCase, StaticLiveServerTestCase):
     def wait_for_url(self, desired_url: str):
         """Wait until URL is `desired_url`."""
 
-        self.wait.until(
-            lambda driver: driver.current_url == desired_url,
-            f"URL {self.driver.current_url} doesn't match expected URL {desired_url}. "
-            f"HTML: {self.driver.page_source[:1000]}",
-        )
+        def waiter(driver: WebDriver):
+            current = driver.current_url
+            return current == desired_url
+
+        # We catch and re-throw the exception from `wait.until`, as we can supply it
+        # an error message, however that message is evaluated when we call `.until()`,
+        # not when the error is thrown, so the URL in the error message will be incorrect.
+        try:
+            self.wait.until(waiter)
+        except TimeoutException as exc:
+            raise TimeoutException(
+                f"URL {self.driver.current_url} doesn't match expected URL {desired_url}. "
+                f"HTML: {self.driver.page_source[:1000]}"
+            ) from exc
 
     def url(self, view: str, query: dict | None = None, **kwargs) -> str:
         """reverse `view` with `**kwargs` into full URL using live_server_url"""
@@ -280,7 +321,7 @@ class SeleniumTestCase(DockerTestCase, StaticLiveServerTestCase):
         if host is not None:
             try:
                 inner_html = host.get_attribute("innerHTML") or "<no host>"
-            except (DetachedShadowRootException, StaleElementReferenceException):
+            except DetachedShadowRootException, StaleElementReferenceException:
                 inner_html = "<stale host>"
 
         raise RuntimeError(
@@ -300,41 +341,48 @@ class SeleniumTestCase(DockerTestCase, StaticLiveServerTestCase):
 
         return wrapper(self.driver)
 
-    def login(self, shadow_dom=True):
+    def login(self, shadow_dom=True, skip_stages: list[str] | None = None):
         """Perform the entire authentik login flow."""
+        skip_stages = skip_stages or []
 
-        if shadow_dom:
-            flow_executor = self.get_shadow_root("ak-flow-executor")
-            identification_stage = self.get_shadow_root("ak-stage-identification", flow_executor)
-        else:
-            flow_executor = self.shady_dom()
-            identification_stage = self.shady_dom()
+        if "ak-stage-identification" not in skip_stages:
+            if shadow_dom:
+                flow_executor = self.get_shadow_root("ak-flow-executor")
+                identification_stage = self.get_shadow_root(
+                    "ak-stage-identification", flow_executor
+                )
+            else:
+                flow_executor = self.shady_dom()
+                identification_stage = self.shady_dom()
 
-        wait = WebDriverWait(identification_stage, self.wait_timeout)
-        wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, "input[name=uidField]")))
+            wait = WebDriverWait(identification_stage, self.wait_timeout)
+            wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, "input[name=uidField]")))
 
-        identification_stage.find_element(By.CSS_SELECTOR, "input[name=uidField]").click()
-        identification_stage.find_element(By.CSS_SELECTOR, "input[name=uidField]").send_keys(
-            self.user.username
-        )
-        identification_stage.find_element(By.CSS_SELECTOR, "input[name=uidField]").send_keys(
-            Keys.ENTER
-        )
+            identification_stage.find_element(By.CSS_SELECTOR, "input[name=uidField]").click()
+            identification_stage.find_element(By.CSS_SELECTOR, "input[name=uidField]").send_keys(
+                self.user.username
+            )
+            identification_stage.find_element(By.CSS_SELECTOR, "input[name=uidField]").send_keys(
+                Keys.ENTER
+            )
 
-        if shadow_dom:
-            flow_executor = self.get_shadow_root("ak-flow-executor")
-            password_stage = self.get_shadow_root("ak-stage-password", flow_executor)
-        else:
-            flow_executor = self.shady_dom()
-            password_stage = self.shady_dom()
+        if "ak-stage-password" not in skip_stages:
+            if shadow_dom:
+                flow_executor = self.get_shadow_root("ak-flow-executor")
+                password_stage = self.get_shadow_root("ak-stage-password", flow_executor)
+            else:
+                flow_executor = self.shady_dom()
+                password_stage = self.shady_dom()
 
-        wait = WebDriverWait(password_stage, self.wait_timeout)
-        wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, "input[name=password]")))
+            wait = WebDriverWait(password_stage, self.wait_timeout)
+            wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, "input[name=password]")))
 
-        password_stage.find_element(By.CSS_SELECTOR, "input[name=password]").send_keys(
-            self.user.username
-        )
-        password_stage.find_element(By.CSS_SELECTOR, "input[name=password]").send_keys(Keys.ENTER)
+            password_stage.find_element(By.CSS_SELECTOR, "input[name=password]").send_keys(
+                self.user.username
+            )
+            password_stage.find_element(By.CSS_SELECTOR, "input[name=password]").send_keys(
+                Keys.ENTER
+            )
         sleep(1)
 
     def assert_user(self, expected_user: User):

@@ -76,10 +76,9 @@ const items = [
                     "install-config/install/kubernetes",
                     "install-config/install/aws",
                 ],
+                //#endregion
             },
             {
-                //#endregion
-
                 //#region Configuration
                 type: "category",
                 label: "Configuration",
@@ -89,6 +88,7 @@ const items = [
                 },
                 items: [],
             },
+            "install-config/first-steps/index",
             "install-config/email",
             "install-config/upgrade",
             "install-config/beta",
@@ -230,7 +230,7 @@ const items = [
                             id: "add-secure-apps/providers/rac/index",
                         },
                         items: [
-                            "add-secure-apps/providers/rac/how-to-rac",
+                            "add-secure-apps/providers/rac/create-rac-provider",
                             "add-secure-apps/providers/rac/rac-public-key",
                             "add-secure-apps/providers/rac/rac_credentials_prompt",
                         ],
@@ -257,6 +257,15 @@ const items = [
                             id: "add-secure-apps/providers/ssf/index",
                         },
                         items: ["add-secure-apps/providers/ssf/create-ssf-provider"],
+                    },
+                    {
+                        type: "category",
+                        label: "WS-Federation Provider",
+                        link: {
+                            type: "doc",
+                            id: "add-secure-apps/providers/wsfed/index",
+                        },
+                        items: ["add-secure-apps/providers/wsfed/create-wsfed-provider"],
                     },
                 ],
             },
@@ -332,16 +341,19 @@ const items = [
                             "add-secure-apps/flows-stages/stages/user_write",
                         ],
                     },
-                    {
-                        type: "category",
-                        label: "Bindings",
-                        link: {
-                            type: "doc",
-                            id: "add-secure-apps/flows-stages/bindings/index",
-                        },
-                        items: ["add-secure-apps/flows-stages/bindings/work_with_bindings"],
-                    },
                 ],
+            },
+            {
+                //#endregion
+
+                //#region Bindings
+                type: "category",
+                label: "Bindings",
+                link: {
+                    type: "doc",
+                    id: "add-secure-apps/bindings-overview/index",
+                },
+                items: ["add-secure-apps/bindings-overview/work-with-bindings"],
             },
             {
                 //#endregion
@@ -599,6 +611,7 @@ const items = [
                             },
                             "users-sources/sources/social-logins/facebook/index",
                             "users-sources/sources/social-logins/github/index",
+                            "users-sources/sources/social-logins/keycloak/index",
                             {
                                 type: "category",
                                 label: "Google",
@@ -612,7 +625,9 @@ const items = [
                                 ],
                             },
                             "users-sources/sources/social-logins/mailcow/index",
+                            "users-sources/sources/social-logins/okta/index",
                             "users-sources/sources/social-logins/plex/index",
+                            "users-sources/sources/social-logins/shibboleth/index",
                             "users-sources/sources/social-logins/telegram/index",
                             "users-sources/sources/social-logins/twitch/index",
                             "users-sources/sources/social-logins/twitter/index",
@@ -632,7 +647,16 @@ const items = [
         collapsed: true,
         items: [
             "sys-mgmt/background-tasks",
-            "sys-mgmt/brands",
+            {
+                type: "category",
+                label: "Brands",
+                collapsed: true,
+                link: {
+                    id: "sys-mgmt/brands/index",
+                    type: "doc",
+                },
+                items: ["sys-mgmt/brands/index", "sys-mgmt/brands/custom-css"],
+            },
             {
                 //#endregion
 
@@ -671,6 +695,152 @@ const items = [
             "sys-mgmt/settings",
             "sys-mgmt/service-accounts",
             "sys-mgmt/data-exports",
+            "sys-mgmt/object-lifecycle-management",
+        ],
+    },
+    {
+        //#endregion
+
+        //#region Endpoint Devices
+        type: "category",
+        label: "Endpoint Devices (Early Preview)",
+        collapsed: true,
+        link: {
+            type: "doc",
+            id: "endpoint-devices/index",
+        },
+        items: [
+            {
+                //#endregion
+
+                //#region authentik Agent
+                type: "category",
+                label: "authentik Agent",
+                collapsed: true,
+                link: {
+                    type: "doc",
+                    id: "endpoint-devices/authentik-agent/index",
+                },
+                items: [
+                    "endpoint-devices/authentik-agent/configuration",
+                    {
+                        //#endregion
+
+                        //#region authentik Agent Deployment
+                        type: "category",
+                        label: "Deployment",
+                        collapsed: true,
+                        link: {
+                            type: "doc",
+                            id: "endpoint-devices/authentik-agent/agent-deployment/index",
+                        },
+                        items: [
+                            "endpoint-devices/authentik-agent/agent-deployment/automated",
+                            "endpoint-devices/authentik-agent/agent-deployment/linux",
+                            "endpoint-devices/authentik-agent/agent-deployment/macos",
+                            "endpoint-devices/authentik-agent/agent-deployment/windows",
+                        ],
+                    },
+                    {
+                        //#endregion
+
+                        //#region Device Authentication
+                        type: "category",
+                        label: "Device authentication",
+                        collapsed: true,
+                        link: {
+                            type: "doc",
+                            id: "endpoint-devices/authentik-agent/device-authentication/index",
+                        },
+                        items: [
+                            "endpoint-devices/authentik-agent/device-authentication/device-access-groups",
+                            {
+                                //#endregion
+
+                                //#region local device login
+                                type: "category",
+                                label: "Local device login",
+                                collapsed: true,
+                                link: {
+                                    type: "doc",
+                                    id: "endpoint-devices/authentik-agent/device-authentication/local-device-login/index",
+                                },
+                                items: [
+                                    "endpoint-devices/authentik-agent/device-authentication/local-device-login/linux",
+                                    "endpoint-devices/authentik-agent/device-authentication/local-device-login/windows",
+                                ],
+                            },
+                            "endpoint-devices/authentik-agent/device-authentication/ssh-authentication",
+                            {
+                                //#endregion
+
+                                //#region cli app authentication
+                                type: "category",
+                                label: "CLI application authentication",
+                                collapsed: true,
+                                link: {
+                                    type: "doc",
+                                    id: "endpoint-devices/authentik-agent/device-authentication/cli-app-authentication/index",
+                                },
+                                items: [
+                                    "endpoint-devices/authentik-agent/device-authentication/cli-app-authentication/aws",
+                                    "endpoint-devices/authentik-agent/device-authentication/cli-app-authentication/k8s",
+                                ],
+                            },
+                        ],
+                    },
+                    "endpoint-devices/authentik-agent/authentik-cli",
+                    "endpoint-devices/authentik-agent/development",
+                    {
+                        //#endregion
+
+                        //#region authentik Agent Release Notes
+                        type: "category",
+                        label: "Release notes",
+                        description: "Release Notes for recent authentik agent versions",
+                        collapsed: true,
+                        link: {
+                            type: "doc",
+                            id: "endpoint-devices/authentik-agent/release-notes/index",
+                        },
+                        items: ["endpoint-devices/authentik-agent/release-notes/v0.35"],
+                    },
+                ],
+            },
+            "endpoint-devices/manage-devices",
+            {
+                //#endregion
+
+                //#region Device Compliance
+                type: "category",
+                label: "Device compliance",
+                collapsed: true,
+                link: {
+                    type: "doc",
+                    id: "endpoint-devices/device-compliance/index",
+                },
+                items: [
+                    "endpoint-devices/device-compliance/configuration",
+                    {
+                        //#endregion
+
+                        //#region Connectors
+                        type: "category",
+                        label: "Connectors",
+                        link: {
+                            type: "doc",
+                            id: "endpoint-devices/device-compliance/connectors/index",
+                        },
+                        items: [
+                            "endpoint-devices/device-compliance/connectors/authentik-agent",
+                            "endpoint-devices/device-compliance/connectors/fleetdm",
+                        ],
+                    },
+                    "endpoint-devices/device-compliance/device-reporting",
+                    "endpoint-devices/device-compliance/device-compliance-policy",
+                    "endpoint-devices/device-compliance/browser-extension",
+                ],
+            },
         ],
     },
     {
@@ -856,6 +1026,7 @@ const items = [
                 },
                 items: [
                     "developer-docs/docs/style-guide",
+                    "developer-docs/docs/theming/index",
                     {
                         type: "category",
                         label: "Templates",

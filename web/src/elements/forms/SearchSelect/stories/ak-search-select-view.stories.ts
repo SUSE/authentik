@@ -59,7 +59,7 @@ export const Default = () => {
         html`<ak-search-select-view
             .options=${longGoodForYouPairs}
             blankable
-            @ak-search-select-select=${displayChange}
+            @change=${displayChange}
         ></ak-search-select-view>`,
     );
 };
@@ -69,7 +69,7 @@ export const DescribedGroups = () => {
         html`<ak-search-select-view
             .options=${groupedSampleData}
             blankable
-            @ak-search-select-select=${displayChange}
+            @change=${displayChange}
         ></ak-search-select-view>`,
     );
 };

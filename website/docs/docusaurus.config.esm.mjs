@@ -35,7 +35,7 @@ const releaseEnvironment = prepareReleaseEnvironment();
 
 const files = [
     // ---
-    resolve(authentikModulePath, "docker-compose.yml"),
+    resolve(authentikModulePath, "lifecycle/container/compose.yml"),
 ];
 
 await Promise.all(
@@ -97,7 +97,7 @@ export default createDocusaurusConfig(
         future: {
             experimental_faster: true,
         },
-
+        clientModules: ["../docusaurus-theme/theme/utils/mermaid_icons.js"],
         url: "https://docs.goauthentik.io",
         //#region Preset
 

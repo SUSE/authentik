@@ -26,7 +26,6 @@ This documentation lists only the settings that you need to change from their de
 :::info
 Looking to integrate authentik with your Cloudflare Dashboard? See our [integration guide](../../platforms/cloudflare/index.md) for more information.
 :::
-:::
 
 ## authentik configuration
 
@@ -49,8 +48,8 @@ To support the integration of Cloudflare Access with authentik, you need to crea
 
 ## Cloudflare Access configuration
 
-1. Open the [Cloudflare Access dashboard](https://one.dash.cloudflare.com) and navigate to **Settings** > **Authentication**.
-2. Click **Login methods**, and then select **Add** > **OpenID Connect**.
+1. Open the [Cloudflare Access dashboard](https://one.dash.cloudflare.com) and navigate to **Integrations** > **Identity provider**.
+2. Click **Add an identity provider**, and then select **OpenID Connect**.
 3. From the authentik provider you created earlier, copy the following details and paste them into the corresponding fields:
     - **Client ID** > App ID
     - **Client Secret** > Client Secret
@@ -62,7 +61,7 @@ To support the integration of Cloudflare Access with authentik, you need to crea
 
 ## Configuration verification
 
-To confirm that authentik is properly configured with Cloudflare Access, click the **Test** button found right next-to the **Save** button from the previous step.
+To confirm that authentik is properly configured with Cloudflare Access, click the **Test** button found right next to the **Save** button from the previous step.
 
 ## Resources
 

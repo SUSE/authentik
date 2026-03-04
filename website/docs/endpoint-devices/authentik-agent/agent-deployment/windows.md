@@ -2,6 +2,7 @@
 title: Deploy authentik Agent on Windows
 sidebar_label: Windows
 tags: [authentik Agent, windows]
+authentik_version: "2025.12.0"
 ---
 
 ## What it can do
@@ -51,6 +52,10 @@ If you already have an enrollment token, skip to the [next section](#install-the
 
 :::info Automated deployment is recommended
 It's recommended to deploy the Agent via [MDM or automation tools](./automated.mdx) instead of manually configuring it.
+:::
+
+:::info Serial number required
+The Agent requires a serial number be presented by Windows. Some hypervisors don't set serial numbers. When deploying on a virtual machine, ensure that it has a serial number set.
 :::
 
 1. Log in to authentik as an administrator and open the authentik Admin interface.

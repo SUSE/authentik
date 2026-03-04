@@ -5,16 +5,13 @@ import Styles from "./ak-flow-card.css";
 import { AKElement } from "#elements/Base";
 import { SlottedTemplateResult } from "#elements/types";
 
-import { ChallengeTypes } from "@goauthentik/api";
+import { FlowChallengeLike } from "#flow/components/types";
 
 import { CSSResult, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import PFLogin from "@patternfly/patternfly/components/Login/login.css";
 import PFTitle from "@patternfly/patternfly/components/Title/title.css";
-import PFBase from "@patternfly/patternfly/patternfly-base.css";
-
-type ExcludeComponent<T> = T extends { component: string } ? Omit<T, "component"> : T;
 
 /**
  * @element ak-flow-card
@@ -30,12 +27,12 @@ export class FlowCard extends AKElement {
     role = "presentation";
 
     @property({ type: Object })
-    challenge?: ExcludeComponent<ChallengeTypes>;
+    challenge?: Pick<FlowChallengeLike, "flowInfo">;
 
     @property({ type: Boolean })
     loading = false;
 
-    static styles: CSSResult[] = [PFBase, PFLogin, PFTitle, Styles];
+    static styles: CSSResult[] = [PFLogin, PFTitle, Styles];
 
     render() {
         let inner = html`<slot></slot>`;
@@ -45,9 +42,13 @@ export class FlowCard extends AKElement {
         // No title if the challenge doesn't provide a title and no custom title is set
         let title: null | SlottedTemplateResult = null;
         if (this.hasSlotted("title")) {
-            title = html`<h1 class="pf-c-title pf-m-3xl"><slot name="title"></slot></h1>`;
+            title = html`<h1 class="pf-c-title pf-m-3xl ak-m-clamped">
+                <slot name="title"></slot>
+            </h1>`;
         } else if (this.challenge?.flowInfo?.title) {
-            title = html`<h1 class="pf-c-title pf-m-3xl">${this.challenge.flowInfo.title}</h1>`;
+            title = html`<h1 class="pf-c-title pf-m-3xl ak-m-clamped">
+                ${this.challenge.flowInfo.title}
+            </h1>`;
         }
         const footer = this.hasSlotted("footer") ? html`<slot name="footer"></slot>` : null;
         const footerBand = this.hasSlotted("footer-band")
