@@ -49,6 +49,37 @@ class TestGroupsAPI(APITestCase):
         group.refresh_from_db()
         self.assertEqual(list(group.users.all()), [self.user])
 
+    def test_add_user_to_superuser_group_no_superuser(self):
+        """Test add_user to a superuser group"""
+        group = Group.objects.create(name=generate_id(), is_superuser=True)
+        self.login_user.assign_perms_to_managed_role("authentik_core.add_user_to_group", group)
+        self.login_user.assign_perms_to_managed_role("authentik_core.view_user")
+        self.client.force_login(self.login_user)
+        res = self.client.post(
+            reverse("authentik_api:group-add-user", kwargs={"pk": group.pk}),
+            data={
+                "pk": self.user.pk,
+            },
+        )
+        self.assertEqual(res.status_code, 400)
+        group.refresh_from_db()
+        self.assertEqual(list(group.users.all()), [])
+
+    def test_add_user_to_superuser_group_with_superuser(self):
+        """Test add_user to a superuser group"""
+        group = Group.objects.create(name=generate_id(), is_superuser=True)
+        self.login_user = create_test_admin_user()
+        self.client.force_login(self.login_user)
+        res = self.client.post(
+            reverse("authentik_api:group-add-user", kwargs={"pk": group.pk}),
+            data={
+                "pk": self.user.pk,
+            },
+        )
+        self.assertEqual(res.status_code, 204)
+        group.refresh_from_db()
+        self.assertEqual(list(group.users.all()), [self.user])
+
     def test_add_user_404(self):
         """Test add_user"""
         group = Group.objects.create(name=generate_id())
@@ -69,6 +100,39 @@ class TestGroupsAPI(APITestCase):
         self.login_user.assign_perms_to_managed_role("authentik_core.remove_user_from_group", group)
         self.login_user.assign_perms_to_managed_role("authentik_core.view_user")
         group.users.add(self.user)
+        self.client.force_login(self.login_user)
+        res = self.client.post(
+            reverse("authentik_api:group-remove-user", kwargs={"pk": group.pk}),
+            data={
+                "pk": self.user.pk,
+            },
+        )
+        self.assertEqual(res.status_code, 204)
+        group.refresh_from_db()
+        self.assertEqual(list(group.users.all()), [])
+
+    def test_remove_user_from_superuser_group_no_superuser(self):
+        """Test add_user to a superuser group"""
+        group = Group.objects.create(name=generate_id(), is_superuser=True)
+        group.users.add(self.user)
+        self.login_user.assign_perms_to_managed_role("authentik_core.remove_user_from_group", group)
+        self.login_user.assign_perms_to_managed_role("authentik_core.view_user")
+        self.client.force_login(self.login_user)
+        res = self.client.post(
+            reverse("authentik_api:group-remove-user", kwargs={"pk": group.pk}),
+            data={
+                "pk": self.user.pk,
+            },
+        )
+        self.assertEqual(res.status_code, 400)
+        group.refresh_from_db()
+        self.assertEqual(list(group.users.all()), [self.user])
+
+    def test_remove_user_from_superuser_group_with_superuser(self):
+        """Test add_user to a superuser group"""
+        group = Group.objects.create(name=generate_id(), is_superuser=True)
+        group.users.add(self.user)
+        self.login_user = create_test_admin_user()
         self.client.force_login(self.login_user)
         res = self.client.post(
             reverse("authentik_api:group-remove-user", kwargs={"pk": group.pk}),
