@@ -18,7 +18,7 @@ from authentik.lib.views import bad_request_message
 from authentik.policies.views import BufferedPolicyAccessView
 from authentik.providers.saml.exceptions import CannotHandleAssertion
 from authentik.providers.saml.models import SAMLBindings, SAMLProvider
-from authentik.suse.saml.authn_request_parser import AuthNRequestParser
+from authentik.providers.saml.processors.authn_request_parser import AuthNRequestParser
 from authentik.providers.saml.views.flows import (
     PLAN_CONTEXT_SAML_AUTH_N_REQUEST,
     REQUEST_KEY_RELAY_STATE,

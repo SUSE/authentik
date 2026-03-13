@@ -228,6 +228,16 @@ class SAMLProvider(Provider):
     sign_response = models.BooleanField(default=False)
     sign_logout_request = models.BooleanField(default=False)
 
+    SUSE_ACS_URL_SPLIT_NEEDLE = "#sep#"
+
+    @property
+    def suse_acs_urls(self):
+        return [url.strip().lower() for url in self.acs_url.split(self.SUSE_ACS_URL_SPLIT_NEEDLE)]
+
+    @property
+    def suse_default_acs_url(self):
+        return self.suse_acs_urls[0]
+
     @property
     def launch_url(self) -> str | None:
         """Use IDP-Initiated SAML flow as launch URL"""
