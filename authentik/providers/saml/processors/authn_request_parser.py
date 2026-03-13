@@ -42,6 +42,8 @@ class AuthNRequest:
 
     name_id_policy: str = SAML_NAME_ID_FORMAT_UNSPECIFIED
 
+    acs_url: str | None = None
+
 
 class AuthNRequestParser:
     """AuthNRequest Parser"""
@@ -59,19 +61,23 @@ class AuthNRequestParser:
         # `AssertionConsumerServiceURL` can be omitted, and we should fallback to the
         # default ACS URL
         if "AssertionConsumerServiceURL" not in root.attrib:
-            request_acs_url = self.provider.acs_url.lower()
+            request_acs_url = self.provider.suse_default_acs_url
         else:
             request_acs_url = root.attrib["AssertionConsumerServiceURL"]
 
-        if self.provider.acs_url.lower() != request_acs_url.lower():
+        valid_acs_urls = [u.lower() for u in self.provider.suse_acs_urls]
+
+        if request_acs_url.lower() not in valid_acs_urls:
             msg = (
-                f"ACS URL of {request_acs_url} doesn't match Provider "
-                f"ACS URL of {self.provider.acs_url}."
+                f"ACS URL of {request_acs_url} doesn't match any Provider "
+                f"ACS URL: {",".join(self.provider.suse_acs_urls)}."
             )
             self.logger.warning(msg)
             raise CannotHandleAssertion(msg)
 
-        auth_n_request = AuthNRequest(id=root.attrib["ID"], relay_state=relay_state)
+        auth_n_request = AuthNRequest(
+            id=root.attrib["ID"], relay_state=relay_state, acs_url=request_acs_url
+        )
 
         # Check if AuthnRequest has a NameID Policy object
         name_id_policies = root.findall(f"{{{NS_SAML_PROTOCOL}}}NameIDPolicy")
@@ -176,7 +182,7 @@ class AuthNRequestParser:
 
     def idp_initiated(self) -> AuthNRequest:
         """Create IdP Initiated AuthNRequest"""
-        request = AuthNRequest(relay_state=None)
+        request = AuthNRequest(relay_state=None, acs_url=self.provider.suse_default_acs_url)
         if self.provider.default_relay_state != "":
             request.relay_state = self.provider.default_relay_state
         if self.provider.default_name_id_policy != SAMLNameIDPolicy.UNSPECIFIED:
