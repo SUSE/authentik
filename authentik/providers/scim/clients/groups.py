@@ -7,7 +7,6 @@ from django.db import transaction
 from django.utils.http import urlencode
 from orjson import dumps
 from pydantic import ValidationError
-from pydanticscim.group import GroupMember
 
 from authentik.core.models import Group
 from authentik.lib.merge import MERGE_LIST_UNIQUE
@@ -25,6 +24,7 @@ from authentik.providers.scim.clients.exceptions import (
 )
 from authentik.providers.scim.clients.schema import (
     SCIM_GROUP_SCHEMA,
+    GroupMember,
     PatchOp,
     PatchOperation,
     PatchRequest,
@@ -323,7 +323,12 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
                 PatchOperation(
                     op=PatchOp.add,
                     path="members",
-                    value=[{"value": x}],
+                    value=[
+                        GroupMember(value=x).model_dump(
+                            mode="json",
+                            exclude_unset=True,
+                        )
+                    ],
                 )
                 for x in users_to_add
             ],
@@ -331,7 +336,12 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
                 PatchOperation(
                     op=PatchOp.remove,
                     path="members",
-                    value=[{"value": x}],
+                    value=[
+                        GroupMember(value=x).model_dump(
+                            mode="json",
+                            exclude_unset=True,
+                        )
+                    ],
                 )
                 for x in users_to_remove
             ],
@@ -354,7 +364,12 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
                 PatchOperation(
                     op=PatchOp.add,
                     path="members",
-                    value=[{"value": x}],
+                    value=[
+                        GroupMember(value=x).model_dump(
+                            mode="json",
+                            exclude_unset=True,
+                        )
+                    ],
                 )
                 for x in user_ids
             ],
@@ -377,7 +392,12 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
                 PatchOperation(
                     op=PatchOp.remove,
                     path="members",
-                    value=[{"value": x}],
+                    value=[
+                        GroupMember(value=x).model_dump(
+                            mode="json",
+                            exclude_unset=True,
+                        )
+                    ],
                 )
                 for x in user_ids
             ],
