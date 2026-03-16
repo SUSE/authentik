@@ -25,12 +25,13 @@ class TestSUSEAuthNRequestParser(APITestCase):
         # Stripped certificate validation, we're interested in the ACS
         # validation behavior
         self.request_factory = RequestFactory()
+        self.default_acs_url = "https://mysite.org/acs-consumer/foo-BAR-baz"
         self.provider = SAMLProvider.objects.create(
             authorization_flow=create_test_flow(),
             acs_url=SAMLProvider.SUSE_ACS_URL_SPLIT_NEEDLE.join(
                 [
-                    "https://mysite.org/acs-consumer/foo-bar-baz",
-                    "https://mysite.org/acs-consumer/lorem-ipsum-dolor",
+                    self.default_acs_url,
+                    "https://mysite.org/acs-consumer/lorem-IPSUM-dolor",
                 ]
             ),
         )
@@ -50,7 +51,7 @@ class TestSUSEAuthNRequestParser(APITestCase):
             )
         )
         self.assertTrue(
-            response.url.startswith(f"{self.provider.suse_default_acs_url}?SAMLResponse="),
+            response.url.startswith(f"{self.default_acs_url}?SAMLResponse="),
             "IdP-initiated flow returns the first ACS URL",
         )
 
@@ -72,7 +73,7 @@ class TestSUSEAuthNRequestParser(APITestCase):
             )
         )
 
-        expected_acs_url = self.provider.suse_default_acs_url
+        expected_acs_url = self.default_acs_url
         target_url = response.json()["url"]
         self.assertEqual(
             target_url, expected_acs_url, "IdP-initiated flow: target is the first ACS URL"
