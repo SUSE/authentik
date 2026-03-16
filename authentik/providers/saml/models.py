@@ -232,7 +232,7 @@ class SAMLProvider(Provider):
 
     @property
     def suse_acs_urls(self):
-        return [url.strip().lower() for url in self.acs_url.split(self.SUSE_ACS_URL_SPLIT_NEEDLE)]
+        return [url.strip() for url in self.acs_url.split(self.SUSE_ACS_URL_SPLIT_NEEDLE)]
 
     @property
     def suse_default_acs_url(self):
