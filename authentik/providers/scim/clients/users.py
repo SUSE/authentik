@@ -13,8 +13,13 @@ from authentik.lib.sync.mapper import PropertyMappingManager
 from authentik.lib.sync.outgoing.exceptions import ObjectExistsSyncException, StopSync
 from authentik.policies.utils import delete_none_values
 from authentik.providers.scim.clients.base import SCIMClient
-from authentik.providers.scim.clients.schema import SCIM_USER_SCHEMA
-from authentik.providers.scim.clients.schema import User as SCIMUserSchema
+from authentik.providers.scim.clients.schema import (
+    SCIM_USER_SCHEMA,
+    PatchOp,
+    PatchOperation,
+    PatchRequest,
+    User as SCIMUserSchema,
+)
 from authentik.providers.scim.models import SCIMMapping, SCIMProvider, SCIMProviderUser
 
 
@@ -110,11 +115,36 @@ class SCIMUserClient(SCIMClient[User, SCIMProviderUser, SCIMUserSchema]):
         )
         if not self.diff(payload, connection):
             self.logger.debug("Skipping user write as data has not changed")
-            return
-        response = self._request(
+            return connection.attributes
+
+        if self._config.patch.supported:
+            response = self._update_patch(payload, connection)
+        else:
+            response = self._update_put(payload, connection)
+
+        connection.attributes = response
+        connection.save()
+
+    def _update_patch(self, payload, connection):
+        """Update existing user using PATCH (replace)"""
+        return self._request(
+            "PATCH",
+            f"/Users/{connection.scim_id}",
+            json=PatchRequest(
+                Operations=[
+                    PatchOperation(
+                        op=PatchOp.replace,
+                        path=None,
+                        value=payload,
+                    )
+                ]
+            ).model_dump(mode="json"),
+        )
+
+    def _update_put(self, payload, connection):
+        """Update existing user using PUT"""
+        return self._request(
             "PUT",
             f"/Users/{connection.scim_id}",
             json=payload,
         )
-        connection.attributes = response
-        connection.save()
