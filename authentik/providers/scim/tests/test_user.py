@@ -12,6 +12,7 @@ from authentik.core.models import Application, Group, User, UserTypes
 from authentik.lib.generators import generate_id
 from authentik.lib.sync.outgoing.base import SAFE_METHODS
 from authentik.lib.sync.outgoing.exceptions import TransientSyncException
+from authentik.providers.scim.clients.schema import ServiceProviderConfiguration
 from authentik.providers.scim.models import SCIMMapping, SCIMProvider, SCIMProviderUser
 from authentik.providers.scim.tasks import scim_sync, scim_sync_objects, sync_tasks
 from authentik.tasks.models import Task
@@ -640,3 +641,93 @@ class SCIMUserTests(TestCase):
                 side_effect=TransientSyncException("connection failed"),
             ):
                 scim_sync.send(self.provider.pk)
+
+    @Mocker(case_sensitive=True)
+    def test_patch_replace_updates(self, mock: Mocker):
+        """Test user creation and update (with patch)"""
+        sp_config = ServiceProviderConfiguration.default()
+        sp_config.patch.supported = True
+
+        scim_id = generate_id()
+        mock.get(
+            "https://localhost/ServiceProviderConfig",
+            json=sp_config.model_dump(mode="json"),
+        )
+        mock.post(
+            "https://localhost/Users",
+            json={
+                "id": scim_id,
+            },
+        )
+        mock.patch(
+            f"https://localhost/Users/{scim_id}",
+            json={
+                "id": scim_id,
+            },
+        )
+        uid = generate_id()
+        user = User.objects.create(
+            username=uid,
+            name=f"{uid} {uid}",
+            email=f"{uid}@goauthentik.io",
+        )
+        self.assertEqual(mock.call_count, 2)
+        self.assertEqual(mock.request_history[0].method, "GET")
+        self.assertEqual(mock.request_history[0].path, "/ServiceProviderConfig")
+        self.assertEqual(mock.request_history[1].method, "POST")
+        self.assertEqual(mock.request_history[1].path, "/Users")
+        body = loads(mock.request_history[1].body)
+        with open("schemas/scim-user.schema.json", encoding="utf-8") as schema:
+            validate(body, loads(schema.read()))
+        self.assertEqual(
+            body,
+            {
+                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+                "active": True,
+                "emails": [
+                    {
+                        "primary": True,
+                        "type": "other",
+                        "value": f"{uid}@goauthentik.io",
+                    }
+                ],
+                "displayName": f"{uid} {uid}",
+                "externalId": user.uid,
+                "name": {
+                    "familyName": uid,
+                    "formatted": f"{uid} {uid}",
+                    "givenName": uid,
+                },
+                "userName": uid,
+            },
+        )
+
+        # Update user
+        user.name = "foo bar"
+        user.is_active = False
+        user.save()
+
+        self.assertEqual(mock.call_count, 3)
+        self.assertEqual(mock.request_history[2].method, "PATCH")
+        self.assertEqual(mock.request_history[2].path, f"/Users/{scim_id}")
+
+        scim_user = self.provider.client_for_model(User).to_schema(user, None)
+        scim_user.id = scim_id
+        payload = scim_user.model_dump(
+            mode="json",
+            exclude_unset=True,
+        )
+
+        self.assertJSONEqual(
+            mock.request_history[2].body,
+            {
+                "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+                "Operations": [
+                    {
+                        "op": "replace",
+                        "path": None,
+                        "value": payload,
+                    }
+                ],
+            },
+        )
