@@ -24,6 +24,7 @@ from authentik.lib.utils.http import get_http_session
 from authentik.providers.scim.clients.exceptions import SCIMRequestException
 from authentik.providers.scim.clients.schema import ServiceProviderConfiguration
 from authentik.providers.scim.models import SCIMCompatibilityMode, SCIMProvider
+from deepmerge import always_merger
 
 if TYPE_CHECKING:
     from django.db.models import Model
@@ -112,6 +113,11 @@ class SCIMClient[TModel: "Model", TConnection: "Model", TSchema: "BaseModel"](
                 exc=exc,
             )
             config = default_config
+
+        override_config = self.provider.auth_oauth_params.get('override')
+        if override_config:
+            merged_cfg = always_merger.merge(config.model_dump(mode="json"), override_config)
+            config = ServiceProviderConfiguration.model_validate(merged_cfg)
 
         # Cache the config (either successfully fetched or default)
         if timeout_seconds > 0:
