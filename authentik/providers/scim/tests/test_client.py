@@ -92,6 +92,27 @@ class SCIMClientTests(TestCase):
         """test scim_sync task"""
         scim_sync.send(self.provider.pk).get_result()
 
+    def test_config_override(self):
+        """Test that ServiceProviderConfig is can be overwritten"""
+
+        with Mocker() as mock:
+            mock.get("https://localhost/ServiceProviderConfig", json={})
+
+            self.provider.auth_oauth_params = {
+                "override": {
+                    "filter": {
+                        "supported": True
+                    }
+                }
+            }
+            client = SCIMClient(self.provider)
+
+            config = client.get_service_provider_config()
+            self.assertEqual(mock.call_count, 1)
+
+            # Verify the override was applied
+            self.assertTrue(config.filter.supported)
+
     def test_config_caching(self):
         """Test that ServiceProviderConfig is cached after first successful fetch"""
         config_json = {
