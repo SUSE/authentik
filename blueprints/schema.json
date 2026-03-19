@@ -10285,7 +10285,8 @@
                         "default",
                         "aws",
                         "slack",
-                        "sfdc"
+                        "sfdc",
+                        "qualified"
                     ],
                     "title": "SCIM Compatibility Mode",
                     "description": "Alter authentik behavior for vendor-specific SCIM implementations."
