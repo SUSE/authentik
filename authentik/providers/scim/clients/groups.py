@@ -208,11 +208,7 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
                         value=scim_group.model_dump(mode="json", exclude_unset=True),
                     )
                 ]
-            ).model_dump(
-                mode="json",
-                exclude_unset=True,
-                exclude_none=True,
-            ),
+            ).model_dump(mode="json"),
         )
 
     def _update_put(self, group: Group, scim_group: SCIMGroupSchema, connection: SCIMProviderGroup):
