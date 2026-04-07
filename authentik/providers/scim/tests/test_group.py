@@ -317,3 +317,69 @@ class SCIMGroupTests(TestCase):
         )
         conn = SCIMProviderGroup.objects.filter(group=group).get()
         self.assertEqual(conn.attributes["id"], scim_id)
+
+    @Mocker(case_sensitive=True)
+    def test_group_create_update_patch(self, mock: Mocker):
+        """Test group creation and update via patch operations"""
+        sp_config = ServiceProviderConfiguration.default()
+        sp_config.filter.supported = True
+        sp_config.patch.supported = True
+        scim_id = generate_id()
+        mock.get(
+            "https://localhost/ServiceProviderConfig",
+            json=sp_config.model_dump(mode="json"),
+        )
+        mock.post(
+            "https://localhost/Groups",
+            json={
+                "id": scim_id,
+            },
+        )
+        mock.patch(
+            "https://localhost/Groups",
+            json={
+                "id": scim_id,
+            },
+        )
+        uid = generate_id()
+        group = Group.objects.create(
+            name=uid,
+        )
+        self.assertEqual(mock.call_count, 2)
+        self.assertEqual(mock.request_history[0].method, "GET")
+        self.assertEqual(mock.request_history[1].method, "POST")
+        body = loads(mock.request_history[1].body)
+        with open("schemas/scim-group.schema.json", encoding="utf-8") as schema:
+            validate(body, loads(schema.read()))
+        self.assertEqual(
+            body,
+            {
+                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+                "externalId": str(group.pk),
+                "displayName": group.name,
+            },
+        )
+        group.name = generate_id()
+        group.save()
+        self.assertEqual(mock.call_count, 3)
+        self.assertEqual(mock.request_history[0].method, "GET")
+        self.assertEqual(mock.request_history[1].method, "POST")
+        self.assertEqual(mock.request_history[2].method, "PATCH")
+        self.assertJSONEqual(
+            mock.request_history[2].body,
+            {
+                "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+                "Operations": [
+                    {
+                        "op": "replace",
+                        "path": None,
+                        "value": {
+                            "displayName": group.name,
+                            "externalId": str(group.pk),
+                            "id": scim_id,
+                            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+                        },
+                    }
+                ],
+            },
+        )
