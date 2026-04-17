@@ -98,13 +98,7 @@ class SCIMClientTests(TestCase):
         with Mocker() as mock:
             mock.get("https://localhost/ServiceProviderConfig", json={})
 
-            self.provider.auth_oauth_params = {
-                "override": {
-                    "filter": {
-                        "supported": True
-                    }
-                }
-            }
+            self.provider.auth_oauth_params = {"override": {"filter": {"supported": True}}}
             client = SCIMClient(self.provider)
 
             config = client.get_service_provider_config()
