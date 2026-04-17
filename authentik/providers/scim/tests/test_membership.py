@@ -343,6 +343,7 @@ class SCIMMembershipTests(TestCase):
                     "Operations": [
                         {
                             "op": "replace",
+                            "path": None,
                             "value": {
                                 "id": group_scim_id,
                                 "displayName": group.name,
@@ -350,7 +351,8 @@ class SCIMMembershipTests(TestCase):
                                 "externalId": str(group.pk),
                             },
                         }
-                    ]
+                    ],
+                    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
                 },
             )
 
