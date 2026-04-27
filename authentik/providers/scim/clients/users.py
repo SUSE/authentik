@@ -18,6 +18,8 @@ from authentik.providers.scim.clients.schema import (
     PatchOp,
     PatchOperation,
     PatchRequest,
+)
+from authentik.providers.scim.clients.schema import (
     User as SCIMUserSchema,
 )
 from authentik.providers.scim.models import SCIMMapping, SCIMProvider, SCIMProviderUser

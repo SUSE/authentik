@@ -48,7 +48,7 @@ class Address(BaseModel):
 class Manager(BaseModel):
     value: str | None = Field(
         None,
-        description="The id of the SCIM resource representingthe User's manager.  REQUIRED.",
+        description="The id of the SCIM resource representing the User's manager.  REQUIRED.",
     )
     ref: AnyUrl | None = Field(
         None,
@@ -58,6 +58,13 @@ class Manager(BaseModel):
     displayName: str | None = Field(
         None,
         description="The displayName of the User's manager. OPTIONAL and READ-ONLY.",
+    )
+
+    # Slack expects manager.managerId, while the default SCIM User Schema instead of .value
+    # see: https://docs.slack.dev/reference/scim-api/#post-users-2
+    managerId: str | None = Field(
+        None,
+        description="managerId (used for slack).",
     )
 
 
