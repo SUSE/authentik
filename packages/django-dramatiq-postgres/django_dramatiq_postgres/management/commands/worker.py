@@ -30,11 +30,19 @@ class Command(BaseCommand):
             help="Watch for file changes",
         )
 
+        # same structure as in dramatiq/cli.py
+        parser.add_argument(
+            "--queues",
+            nargs="*",
+            help="listen to a subset of queues (default: all queues)",
+        )
+
     def handle(
         self,
         pid_file: str,
         watch: bool,
         verbosity: int,
+        queues: list,
         **options: Any,
     ) -> None:
         worker = Conf().worker
@@ -69,6 +77,9 @@ class Command(BaseCommand):
             args.pid_file = pid_file
 
         args.verbose = verbosity - 1
+
+        if queues:
+            args.queues = queues
 
         connections.close_all()
         sys.exit(main(args))  # type: ignore[no-untyped-call]
