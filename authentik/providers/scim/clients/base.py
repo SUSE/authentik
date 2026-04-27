@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING
 
+from deepmerge import always_merger
 from django.core.cache import cache
 from django.http import HttpResponseBadRequest, HttpResponseNotFound
 from pydantic import ValidationError
@@ -24,7 +25,6 @@ from authentik.lib.utils.http import get_http_session
 from authentik.providers.scim.clients.exceptions import SCIMRequestException
 from authentik.providers.scim.clients.schema import ServiceProviderConfiguration
 from authentik.providers.scim.models import SCIMCompatibilityMode, SCIMProvider
-from deepmerge import always_merger
 
 if TYPE_CHECKING:
     from django.db.models import Model
