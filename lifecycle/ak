@@ -18,7 +18,7 @@ function wait_for_db {
 function check_if_root {
     if [[ $EUID -ne 0 ]]; then
         log "Not running as root, disabling permission fixes"
-        exec $1
+        exec "$@"
         return
     fi
     SOCKET="/var/run/docker.sock"
@@ -38,14 +38,14 @@ function check_if_root {
     chown -R authentik:authentik /data /certs "${PROMETHEUS_MULTIPROC_DIR}"
     chmod ug+rwx /data
     chmod ug+rx /certs
-    exec chpst -u authentik:$GROUP env HOME=/authentik $1
+    exec chpst -u authentik:$GROUP env HOME=/authentik "$@"
 }
 
 function run_authentik {
     if [[ -x "$(command -v authentik)" ]]; then
-        exec authentik $@
+        exec authentik "$@"
     else
-        exec go run -v ./cmd/server/ $@
+        exec go run -v ./cmd/server/ "$@"
     fi
 }
 
@@ -90,18 +90,18 @@ elif [[ "$1" == "worker" ]]; then
     if [[ -n "${AUTHENTIK_BOOTSTRAP_PASSWORD}" || -n "${AUTHENTIK_BOOTSTRAP_TOKEN}" ]]; then
         python -m manage apply_blueprint system/bootstrap.yaml || true
     fi
-    check_if_root "python -m manage worker --pid-file ${TMPDIR}/authentik-worker.pid $@"
+    check_if_root python -m manage worker --pid-file "${TMPDIR}/authentik-worker.pid" "$@"
 elif [[ "$1" == "bash" ]]; then
     /bin/bash
 elif [[ "$1" == "test-all" ]]; then
     prepare_debug
     chmod 777 /root
-    check_if_root "python -m manage test authentik"
+    check_if_root python -m manage test authentik
 elif [[ "$1" == "healthcheck" ]]; then
     run_authentik healthcheck $(cat $MODE_FILE)
 elif [[ "$1" == "dump_config" ]]; then
     shift
-    exec python -m authentik.lib.config $@
+    exec python -m authentik.lib.config "$@"
 elif [[ "$1" == "debug" ]]; then
     exec sleep infinity
 else
