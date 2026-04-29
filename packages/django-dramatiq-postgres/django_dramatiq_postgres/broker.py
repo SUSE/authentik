@@ -368,6 +368,8 @@ class _PostgresConsumer(Consumer):
         if task is None:
             return None
         message = Message.decode(cast(bytes, task.message))
+        if message.queue_name != task.queue_name:
+            message = message.copy(queue_name=task.queue_name)
         message.options["task"] = task
         self.in_processing.add(str(message_id))
         return message
