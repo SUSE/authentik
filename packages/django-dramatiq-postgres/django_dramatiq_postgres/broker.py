@@ -380,6 +380,8 @@ class _PostgresConsumer(Consumer):
                 eta=None,
             )
             return None
+        if message.queue_name != task.queue_name:
+            message = message.copy(queue_name=task.queue_name)
         message.options["task"] = task
         self.in_processing.add(str(message_id))
         return message
