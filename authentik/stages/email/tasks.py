@@ -52,10 +52,7 @@ def get_email_body(email: EmailMultiAlternatives) -> str:
     return email.body
 
 
-@actor(
-    description=_("Send email."),
-    queue_name="mailer",
-)
+@actor(description=_("Send email."))
 def send_mail(
     message: dict[Any, Any],
     stage_class_path: str | None = None,
