@@ -54,6 +54,7 @@ class Command(BaseCommand):
             modules=modules,
             path=["."],
             queues=None,
+            pid_file=None,
             log_file=None,
             skip_logging=True,
             use_spawn=False,
