@@ -30,14 +30,27 @@ def clean_expired_models():
             cls.objects.all().exclude(expiring=False).exclude(expiring=True, expires__gt=now())
         )
         amount = objects.count()
+        LOGGER.debug("About to delete", model=cls, amount=amount)
         for obj in chunked_queryset(objects):
             obj.expire_action()
         LOGGER.debug("Expired models", model=cls, amount=amount)
         self.info(f"Expired {amount} {cls._meta.verbose_name_plural}")
+
+
+@actor(description=_("Remove expired cache objects."))
+def cleanup_expired_cache():
+    self = CurrentTask.get_task()
+    self.info("Starting to clean expired cache")
     clear_expired_cache()
+
+
+@actor(description=_("Remove expired channel messages."))
+def clean_expired_django_messages():
+    self = CurrentTask.get_task()
     for cls in [Message, GroupChannel]:
         objects = cls.objects.all().filter(expires__lt=now())
         amount = objects.count()
+        LOGGER.debug("About to delete", model=cls, amount=amount)
         for obj in chunked_queryset(objects):
             obj.delete()
         LOGGER.debug("Expired models", model=cls, amount=amount)
