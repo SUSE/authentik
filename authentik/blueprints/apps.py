@@ -11,6 +11,7 @@ from django.db import DatabaseError, InternalError, ProgrammingError
 from dramatiq.broker import get_broker
 from structlog.stdlib import BoundLogger, get_logger
 
+from authentik.lib.config import CONFIG
 from authentik.lib.utils.time import fqdn_rand
 from authentik.root.signals import startup
 from authentik.tasks.schedules.common import ScheduleSpec
@@ -34,6 +35,9 @@ class ManagedAppConfig(AppConfig):
         return super().ready()
 
     def _on_startup_callback(self, sender, **_):
+        if CONFIG.get_bool("suse.disable_reconcile_on_boot", False):
+            return
+
         self._reconcile_global()
         self._reconcile_tenant()
 
