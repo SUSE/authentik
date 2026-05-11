@@ -18,7 +18,7 @@ class LDAPBackend(InbuiltBackend):
         """Try to authenticate a user via ldap"""
         if "password" not in kwargs:
             return None
-        for source in LDAPSource.objects.filter(enabled=True):
+        for source in LDAPSource.objects.filter(enabled=True).order_by("name"):
             LOGGER.debug("LDAP Auth attempt", source=source)
             user = self.auth_user(request, source, **kwargs)
             if user:
@@ -56,7 +56,9 @@ class LDAPBackend(InbuiltBackend):
         """Attempt authentication by binding to the LDAP server as `user`. This
         method should be avoided as its slow to do the bind."""
         # Try to bind as new user
-        LOGGER.debug("Attempting to bind as user", user=user)
+        LOGGER.debug(
+            "Attempting to bind as user", user=user, dn=user.attributes.get(LDAP_DISTINGUISHED_NAME)
+        )
         try:
             # source.connection also attempts to bind
             source.connection(
