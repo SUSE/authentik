@@ -23,10 +23,11 @@ from authentik.sources.ldap.models import (
 from authentik.sources.ldap.sync.base import BaseLDAPSynchronizer
 from authentik.sources.ldap.sync.vendor.freeipa import FreeIPA
 from authentik.sources.ldap.sync.vendor.ms_ad import MicrosoftActiveDirectory
+from authentik.suse.ldap.user_synchronizer import UserSynchronizer
 from authentik.tasks.models import Task
 
 
-class UserLDAPSynchronizer(BaseLDAPSynchronizer):
+class _UserLDAPSynchronizer(BaseLDAPSynchronizer):
     """Sync LDAP Users into authentik"""
 
     def __init__(self, source: LDAPSource, task: Task):
@@ -118,3 +119,7 @@ class UserLDAPSynchronizer(BaseLDAPSynchronizer):
                 )
                 FreeIPA(self._source, self._task).sync(attributes, ak_user, created)
         return user_count
+
+
+class UserLDAPSynchronizer(UserSynchronizer, _UserLDAPSynchronizer):
+    pass

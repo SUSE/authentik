@@ -8,9 +8,10 @@ from authentik.core.models import Group
 from authentik.sources.ldap.models import GroupLDAPSourceConnection
 from authentik.sources.ldap.sync.base import BaseLDAPSynchronizer
 from authentik.sources.ldap.sync.forward_delete_users import DELETE_CHUNK_SIZE, UPDATE_CHUNK_SIZE
+from authentik.suse.ldap.group_forward_deletion_synchronizer import GroupForwardDeletionSynchronizer
 
 
-class GroupLDAPForwardDeletion(BaseLDAPSynchronizer):
+class _GroupLDAPForwardDeletion(BaseLDAPSynchronizer):
     """Delete LDAP Groups from authentik"""
 
     @staticmethod
@@ -59,3 +60,7 @@ class GroupLDAPForwardDeletion(BaseLDAPSynchronizer):
         self._logger.debug("Deleting groups", group_pks=group_pks)
         _, deleted_per_type = Group.objects.filter(pk__in=group_pks).delete()
         return deleted_per_type.get(Group._meta.label, 0)
+
+
+class GroupLDAPForwardDeletion(GroupForwardDeletionSynchronizer, _GroupLDAPForwardDeletion):
+    pass

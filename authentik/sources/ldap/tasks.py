@@ -23,6 +23,11 @@ from authentik.sources.ldap.sync.forward_delete_users import UserLDAPForwardDele
 from authentik.sources.ldap.sync.groups import GroupLDAPSynchronizer
 from authentik.sources.ldap.sync.membership import MembershipLDAPSynchronizer
 from authentik.sources.ldap.sync.users import UserLDAPSynchronizer
+from authentik.suse.ldap.tasks import (
+    ldap_jit_sync_existing_users,  # noqa: F401
+    ldap_trigger_jit_sync,  # noqa: F401
+    ldap_trigger_jit_sync_direct,  # noqa: F401
+)
 from authentik.tasks.middleware import CurrentTask
 from authentik.tasks.models import Task
 

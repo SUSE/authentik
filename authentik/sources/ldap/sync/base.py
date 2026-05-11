@@ -10,10 +10,11 @@ from authentik.core.sources.mapper import SourceMapper
 from authentik.lib.config import CONFIG
 from authentik.lib.sync.mapper import PropertyMappingManager
 from authentik.sources.ldap.models import LDAPSource, flatten
+from authentik.suse.ldap.base_synchronizer import BaseSynchronizer
 from authentik.tasks.models import Task
 
 
-class BaseLDAPSynchronizer:
+class _BaseLDAPSynchronizer:
     """Sync LDAP Users and groups into authentik"""
 
     _source: LDAPSource
@@ -117,3 +118,7 @@ class BaseLDAPSynchronizer:
             except KeyError:
                 cookie = None
             yield self._connection.response
+
+
+class BaseLDAPSynchronizer(BaseSynchronizer, _BaseLDAPSynchronizer):
+    pass

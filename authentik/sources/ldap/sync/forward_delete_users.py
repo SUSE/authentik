@@ -7,12 +7,13 @@ from ldap3 import SUBTREE
 from authentik.core.models import User
 from authentik.sources.ldap.models import UserLDAPSourceConnection
 from authentik.sources.ldap.sync.base import BaseLDAPSynchronizer
+from authentik.suse.ldap.user_forward_deletion import UserForwardDeletion
 
 UPDATE_CHUNK_SIZE = 10_000
 DELETE_CHUNK_SIZE = 50
 
 
-class UserLDAPForwardDeletion(BaseLDAPSynchronizer):
+class _UserLDAPForwardDeletion(BaseLDAPSynchronizer):
     """Delete LDAP Users from authentik"""
 
     @staticmethod
@@ -61,3 +62,7 @@ class UserLDAPForwardDeletion(BaseLDAPSynchronizer):
         self._logger.debug("Deleting users", user_pks=user_pks)
         _, deleted_per_type = User.objects.filter(pk__in=user_pks).delete()
         return deleted_per_type.get(User._meta.label, 0)
+
+
+class UserLDAPForwardDeletion(UserForwardDeletion, _UserLDAPForwardDeletion):
+    pass
