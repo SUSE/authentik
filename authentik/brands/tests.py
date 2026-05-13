@@ -8,7 +8,8 @@ from rest_framework.test import APITestCase
 from authentik.blueprints.tests import apply_blueprint
 from authentik.brands.models import Brand
 from authentik.core.models import Application
-from authentik.core.tests.utils import create_test_admin_user, create_test_brand
+from authentik.core.tests.utils import create_test_admin_user, create_test_brand, create_test_flow
+from authentik.flows.models import FlowDesignation
 from authentik.lib.generators import generate_id
 from authentik.providers.oauth2.models import OAuth2Provider
 from authentik.providers.saml.models import SAMLProvider
@@ -294,3 +295,97 @@ class TestBrands(APITestCase):
         res = self.client.get(reverse("authentik_core:if-user"))
         self.assertEqual(res.status_code, 200)
         self.assertIn(brand.branding_custom_css, res.content.decode())
+
+    def test_custom_header_ui_links_no_geo(self):
+        """Test geo footer with no matching header"""
+
+        footer_name = "Footer for users in FOO"
+        footer_href = "https://foo.example.com"
+
+        brand = create_test_brand()
+        brand.attributes = {
+            "geo_footer_links": {
+                "FOO": [
+                    {
+                        "name": footer_name,
+                        "href": footer_href,
+                    },
+                ],
+            },
+        }
+        brand.save()
+
+        res = self.client.get(
+            reverse(
+                "authentik_core:if-flow",
+                kwargs={"flow_slug": create_test_flow(FlowDesignation.AUTHENTICATION).slug},
+            )
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(footer_name in res.text)
+        self.assertFalse(footer_href in res.text)
+
+    def test_custom_header_ui_links_unmatched_geo(self):
+        """Test geo footer with no matching header"""
+
+        footer_name = "Footer for users in FOO"
+        footer_href = "https://foo.example.com"
+
+        brand = create_test_brand()
+        brand.attributes = {
+            "geo_footer_links": {
+                "FOO": [
+                    {
+                        "name": footer_name,
+                        "href": footer_href,
+                    },
+                ],
+            },
+        }
+        brand.save()
+
+        res = self.client.get(
+            reverse(
+                "authentik_core:if-flow",
+                kwargs={"flow_slug": create_test_flow(FlowDesignation.AUTHENTICATION).slug},
+            ),
+            HTTP_X_SUSE_GEO="BAR",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(footer_name in res.text)
+        self.assertFalse(footer_href in res.text)
+
+    def test_custom_header_ui_links_matching_geo(self):
+        """Test geo footer with matching header"""
+
+        brand = create_test_brand()
+        brand.attributes = {
+            "geo_footer_links": {
+                "FOO": [
+                    {
+                        "name": "Footer for users in FOO",
+                        "href": "https://foo.example.com",
+                    },
+                ],
+                "BAR": [
+                    {
+                        "name": "Footer for users in BAR",
+                        "href": "https://bar.example.com",
+                    },
+                ],
+            },
+        }
+        brand.save()
+
+        res = self.client.get(
+            reverse(
+                "authentik_core:if-flow",
+                kwargs={"flow_slug": create_test_flow(FlowDesignation.AUTHENTICATION).slug},
+            ),
+            HTTP_X_SUSE_GEO="FOO",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue("Footer for users in FOO" in res.text)
+        self.assertTrue("https://foo.example.com" in res.text)
+        self.assertFalse("Footer for users in BAR" in res.text)
+        self.assertFalse("https://bar.example.com" in res.text)
