@@ -52,6 +52,14 @@ class CertificateWatcherMiddleware(Middleware):
 
     def start_certificate_watcher(self):
         """Start certificate file watcher"""
+        if not CONFIG.get("cert_discovery_dir"):
+            print("No cert discovery")
+            return
+        cert_path = Path(CONFIG.get("cert_discovery_dir"))
+        if not cert_path.exists():
+            print(f"Cert dir {cert_path} does not exist")
+            return
+
         observer = Observer()
         kwargs = {}
         if platform.startswith("linux"):
