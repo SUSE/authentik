@@ -128,6 +128,17 @@ class CurrentBrandSerializer(PassiveSerializer):
             values[flag().key] = flag.get()
         return values
 
+    def to_representation(self, brand):
+        data = super().to_representation(brand)
+        request = self.context.get("request")
+
+        if request and (geo := request.headers.get("x-suse-geo")):
+            data["ui_footer_links"] = data.get("ui_footer_links", []) + brand.attributes.get(
+                "geo_footer_links", {}
+            ).get(geo, [])
+
+        return data
+
 
 class BrandViewSet(UsedByMixin, ModelViewSet):
     """Brand Viewset"""
