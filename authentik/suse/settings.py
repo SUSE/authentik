@@ -24,7 +24,9 @@ scheduler_class = CONFIG.get(
     "worker.scheduler_class", "authentik.tasks.schedules.scheduler.Scheduler"
 )
 # Configure the results Backend
-result_backend = CONFIG.get("worker.result_backend", "authentik.suse.worker.results.Backend")
+result_backend = CONFIG.get(
+    "worker.result_backend", "django_dramatiq_postgres.results.PostgresBackend"
+)
 
 # Insert the middleware next to LoggingMiddleware
 middleware_pivot = next(
