@@ -14,7 +14,7 @@ from authentik.sources.ldap.models import (
 )
 from authentik.sources.ldap.sync.users import UserLDAPSynchronizer
 from authentik.sources.ldap.tasks import (
-    ldap_jit_sync_existing_users,
+    ldap_sync_existing_users,
 )
 from authentik.sources.ldap.tests.mock_389ds import mock_389ds_connection
 from authentik.tasks.models import Task
@@ -22,7 +22,7 @@ from authentik.tasks.models import Task
 LDAP_PASSWORD = generate_key()
 
 
-class LDAPJITExistingUsersSyncTests(TestCase):
+class LDAPSyncExistingUsersTests(TestCase):
     """LDAP Sync tests"""
 
     @apply_blueprint("system/sources-ldap.yaml")
@@ -52,7 +52,7 @@ class LDAPJITExistingUsersSyncTests(TestCase):
 
             before_user_id_list = sorted(self.source.user_set.all().values_list("pk", flat=True))
             # run the task
-            ldap_jit_sync_existing_users.send(self.source)
+            ldap_sync_existing_users.send(self.source.pk)
             after_user_id_list = sorted(self.source.user_set.all().values_list("pk", flat=True))
 
             # see the user deleted
@@ -77,7 +77,7 @@ class LDAPJITExistingUsersSyncTests(TestCase):
             u.save()
 
             # run the task
-            ldap_jit_sync_existing_users.send(self.source.pk)
+            ldap_sync_existing_users.send(self.source.pk)
 
             # see the user deleted
             after_user_id_list = sorted(self.source.user_set.all().values_list("pk", flat=True))

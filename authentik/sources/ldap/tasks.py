@@ -23,10 +23,14 @@ from authentik.sources.ldap.sync.forward_delete_users import UserLDAPForwardDele
 from authentik.sources.ldap.sync.groups import GroupLDAPSynchronizer
 from authentik.sources.ldap.sync.membership import MembershipLDAPSynchronizer
 from authentik.sources.ldap.sync.users import UserLDAPSynchronizer
+
+# NOTE: These are a necessary side effect for dramatiq actor find functions to
+#       make our tasks available to the background job workers
 from authentik.suse.ldap.tasks import (
-    ldap_jit_sync_existing_users,  # noqa: F401
-    ldap_trigger_jit_sync,  # noqa: F401
-    ldap_trigger_jit_sync_direct,  # noqa: F401
+    ldap_slim_sync_all_users,  # noqa: F401
+    ldap_slim_sync_user_page,  # noqa: F401
+    ldap_sync_existing_single_user,  # noqa: F401
+    ldap_sync_existing_users,  # noqa: F401
 )
 from authentik.tasks.middleware import CurrentTask
 from authentik.tasks.models import Task

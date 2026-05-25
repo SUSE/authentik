@@ -21,16 +21,6 @@ from authentik.sources.ldap.sync.vendor.ms_ad import MicrosoftActiveDirectory
 
 
 class UserSynchronizer:
-    def get_filter_and_base(
-        self, attribute_name=None, attribute_value=None, search_base=None, dn=None
-    ):
-        return super().get_filter_and_base(
-            search_base=search_base or self.base_dn_users,
-            attribute_name=attribute_name,
-            attribute_value=attribute_value,
-            dn=dn,
-        )
-
     def get_iterator(
         self,
         since=None,
@@ -46,11 +36,15 @@ class UserSynchronizer:
         if since:
             search_filter = self.add_modify_timestamp_filter(search_filter, since)
 
+        attributes = self.get_ldap_attributes()
+        if "attributes" in kwargs:
+            attributes = kwargs.pop("attributes")
+
         return self.search_generator(
             search_base=search_base,
             search_filter=search_filter,
             search_scope=search_scope,
-            attributes=self.get_ldap_attributes(),
+            attributes=attributes,
             **kwargs,
         )
 
@@ -63,11 +57,15 @@ class UserSynchronizer:
         if since:
             search_filter = self.add_modify_timestamp_filter(search_filter, since)
 
+        attributes = self.get_ldap_attributes()
+        if "attributes" in kwargs:
+            attributes = kwargs.pop("attributes")
+
         return self.search_paginator(
             search_base=self.base_dn_users,
             search_filter=search_filter,
             search_scope=SUBTREE,
-            attributes=self.get_ldap_attributes(),
+            attributes=attributes,
             **kwargs,
         )
 
