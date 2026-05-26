@@ -47,8 +47,8 @@ class ReadyView(View):
     def check_db(self):
         for db_conn in connections.all():
             # Force connection reload
-            db_conn.connect()
-            _ = db_conn.cursor()
+            with db_conn.cursor():
+                pass
 
     def dispatch(self, request: HttpRequest) -> HttpResponse:
         try:
