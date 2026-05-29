@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"runtime"
 	"strconv"
 	"strings"
@@ -17,9 +18,14 @@ import (
 	"goauthentik.io/internal/utils"
 )
 
+const (
+	UnixSocketName = "authentik-core.sock"
+)
+
 var (
 	manageCmd    string = "./manage.py"
 	gunicornCmd  string = "gunicorn"
+	daphneCmd    string = "daphne"
 	gunicornConf string = "./lifecycle/gunicorn.conf.py"
 	pidDir       string = ""
 )
@@ -67,19 +73,40 @@ func New(healthcheck func() bool) *GoUnicorn {
 func (g *GoUnicorn) initCmd() {
 	command := manageCmd
 	args := []string{"dev_server"}
+	webserver := "dev_server"
+
 	if !config.Get().Debug {
 		pidFile, err := os.CreateTemp(pidDir, "authentik-gunicorn.*.pid")
 		if err != nil {
 			panic(fmt.Errorf("failed to create temporary pid file: %v", err))
 		}
 		g.pidFile = pidFile.Name()
-		command = gunicornCmd
-		args = []string{"-c", gunicornConf, "authentik.root.asgi:application"}
-		if g.pidFile != "" {
-			args = append(args, "--pid", g.pidFile)
+
+		webserver = os.Getenv("WEBSERVER")
+		switch webserver {
+		case "daphne":
+			tmp := os.TempDir()
+			socketPath := path.Join(tmp, UnixSocketName)
+
+			command = daphneCmd
+			args = []string{
+				"-u", socketPath, "--websocket_timeout", "15",
+				"--websocket_connect_timeout", "30",
+				"--ping-interval", "30", "--ping-timeout", "10",
+				"--proxy-headers", "authentik.root.asgi:application",
+			}
+			// daphne has no pidfile support
+		default:
+			webserver = "gunicorn"
+			command = gunicornCmd
+			args = []string{"-c", gunicornConf, "authentik.root.asgi:application"}
+			if g.pidFile != "" {
+				args = append(args, "--pid", g.pidFile)
+			}
 		}
 	}
-	g.log.WithField("args", args).WithField("cmd", command).Debug("Starting gunicorn")
+
+	g.log.WithField("args", args).WithField("webserver", webserver).WithField("cmd", command).Debug("Starting webserver")
 	g.p = exec.Command(command, args...)
 	g.p.Env = os.Environ()
 	g.p.Stdout = os.Stdout
