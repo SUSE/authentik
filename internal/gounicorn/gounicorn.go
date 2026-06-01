@@ -26,6 +26,7 @@ var (
 	manageCmd    string = "./manage.py"
 	gunicornCmd  string = "gunicorn"
 	daphneCmd    string = "daphne"
+	uvicornCmd   string = "uvicorn"
 	gunicornConf string = "./lifecycle/gunicorn.conf.py"
 	pidDir       string = ""
 )
@@ -82,11 +83,11 @@ func (g *GoUnicorn) initCmd() {
 		}
 		g.pidFile = pidFile.Name()
 
+		tmp := os.TempDir()
+		socketPath := path.Join(tmp, UnixSocketName)
 		webserver = os.Getenv("WEBSERVER")
 		switch webserver {
 		case "daphne":
-			tmp := os.TempDir()
-			socketPath := path.Join(tmp, UnixSocketName)
 
 			command = daphneCmd
 			args = []string{
@@ -96,6 +97,17 @@ func (g *GoUnicorn) initCmd() {
 				"--proxy-headers", "authentik.root.asgi:application",
 			}
 			// daphne has no pidfile support
+		case "uvicorn":
+			command = uvicornCmd
+			// workers=2 to prevent the worker pool to be empty when recycling workers
+			args = []string{
+				"--uds", socketPath, "--workers", "2", "--lifespan", "off",
+				"--no-server-header", "--proxy-headers",
+				"--interface", "asgi3", "--limit-max-requests", "1000",
+				"--limit-max-requests-jitter", "50",
+				"authentik.root.asgi:application",
+			}
+			// uvicorn has no pidfile support
 		default:
 			webserver = "gunicorn"
 			command = gunicornCmd
