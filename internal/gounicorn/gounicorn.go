@@ -104,7 +104,6 @@ func (g *GoUnicorn) initCmd() {
 				"--uds", socketPath, "--workers", "2", "--lifespan", "off",
 				"--no-server-header", "--proxy-headers",
 				"--interface", "asgi3", "--limit-max-requests", "1000",
-				"--limit-max-requests-jitter", "50",
 				"authentik.root.asgi:application",
 			}
 			// uvicorn has no pidfile support
