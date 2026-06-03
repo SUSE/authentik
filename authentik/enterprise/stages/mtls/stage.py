@@ -1,4 +1,5 @@
 from binascii import hexlify
+from datetime import datetime, UTC
 from enum import IntFlag, auto
 from urllib.parse import unquote_plus
 
@@ -138,9 +139,9 @@ class MTLSStageView(ChallengeStageView):
         authorities_cert = [x.certificate for x in authorities]
         for _cert in certs:
             try:
-                PolicyBuilder().store(Store(authorities_cert)).build_client_verifier().verify(
-                    _cert, []
-                )
+                PolicyBuilder().time(datetime.now(UTC)).store(
+                    Store(authorities_cert)
+                ).build_client_verifier().verify(_cert, [])
                 return _cert
             except (
                 InvalidSignature,
