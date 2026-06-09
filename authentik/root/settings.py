@@ -469,6 +469,13 @@ if _ERROR_REPORTING:
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
 STATICFILES_DIRS = [BASE_DIR / Path("web")]
+
+if CONFIG.get_bool("suse.packaging.include_current_dir_in_static_files"):
+    local_dir = BASE_DIR / Path("web")
+    if local_dir not in STATICFILES_DIRS:
+        CONFIG.log("info", "Including local dir for STATICFILES_DIRS", local_dir=local_dir)
+        STATICFILES_DIRS.append(local_dir)
+
 STATIC_URL = CONFIG.get("web.path", "/") + "static/"
 
 STORAGES = {
