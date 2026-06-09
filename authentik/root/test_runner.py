@@ -86,7 +86,9 @@ class PytestTestRunner(DiscoverRunner):  # pragma: no cover
         ASN_CONTEXT_PROCESSOR.load()
         GEOIP_CONTEXT_PROCESSOR.load()
 
-        sentry_init()
+        if CONFIG.get_bool("error_reporting.enabled", False):
+            sentry_init()
+
         self.logger.debug("Test environment configured")
 
         use_test_broker()
