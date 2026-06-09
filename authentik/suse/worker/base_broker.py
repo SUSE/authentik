@@ -37,6 +37,8 @@ from pglock.core import _cast_lock_id
 from psycopg.errors import AdminShutdown, IdleSessionTimeout
 from structlog.stdlib import get_logger
 
+from authentik.tasks.models import TaskLog
+
 logger = get_logger(__name__)
 
 P = ParamSpec("P")
@@ -582,12 +584,17 @@ class _PostgresConsumer(Consumer):
         if timezone.now() - self.task_purge_last_run < self.task_purge_interval:
             return
         self.logger.debug("Running garbage collector")
+        log_count = TaskLog.objects.filter(
+            task__state__in=(TaskState.DONE, TaskState.REJECTED),
+            task__mtime__lte=timezone.now() - timedelta(seconds=Conf().task_expiration),
+            task__result_expiry__lte=timezone.now(),
+        ).delete()
         count = self.query_set.filter(
             state__in=(TaskState.DONE, TaskState.REJECTED),
             mtime__lte=timezone.now() - timedelta(seconds=Conf().task_expiration),
             result_expiry__lte=timezone.now(),
         ).delete()
-        self.logger.info("Purged messages in all queues", count=count)
+        self.logger.info("Purged messages in all queues", count=count, log_count=log_count)
         self.task_purge_last_run = timezone.now()
 
     @raise_connection_error
