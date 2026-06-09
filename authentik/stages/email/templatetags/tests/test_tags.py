@@ -1,10 +1,14 @@
 """template function tests"""
 
-from django.test import TestCase
+from pathlib import Path
+
+from django.conf import settings
+from django.test import TestCase, override_settings
 
 from authentik.stages.email.templatetags.authentik_stages_email import inline_static_binary
 
 
+@override_settings(STATICFILES_DIRS=[settings.BASE_DIR / Path("web")])
 class TestTemplateTags(TestCase):
     """Template tag tests"""
 
