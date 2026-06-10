@@ -1,8 +1,11 @@
 """email stage tasks"""
 
+from email.mime.image import MIMEImage
 from email.utils import make_msgid
+from pathlib import Path
 from typing import Any
 
+from django.contrib.staticfiles import finders
 from django.core.mail import EmailMultiAlternatives
 from django.core.mail.utils import DNS_NAME
 from django.utils.text import slugify
@@ -15,8 +18,9 @@ from authentik.events.models import Event, EventAction
 from authentik.lib.utils.reflection import class_to_path, path_to_class
 from authentik.stages.authenticator_email.models import AuthenticatorEmailStage
 from authentik.stages.email.models import EmailStage
-from authentik.stages.email.utils import logo_data
+from authentik.stages.email.templatetags.authentik_stages_email import AttachmentType
 from authentik.tasks.middleware import CurrentTask
+from authentik.tasks.models import Task
 
 LOGGER = get_logger()
 
@@ -52,6 +56,37 @@ def get_email_body(email: EmailMultiAlternatives) -> str:
     return email.body
 
 
+def process_attachments(self: Task, email: EmailMultiAlternatives, attachments) -> bool:
+    for path, attachment in attachments.items():
+        result = finders.find(path)
+
+        if result is None:
+            self.error(f"Could not find file {path}. Looked in {finders.searched_locations}")
+            return False
+
+        result = Path(result)
+
+        if not result.is_file():
+            self.error("Could not find file " + path)
+            return False
+
+        with open(result, "rb") as _file:
+            content = _file.read()
+
+        if attachment["type"] == AttachmentType.IMAGE:
+            mime_attachment = MIMEImage(content)
+        else:
+            self.error("Unsupported attachment " + path)
+            return False
+
+        content_id = attachment["content_id"]
+        mime_attachment.add_header("Content-ID", f"<{content_id}>")
+        mime_attachment.add_header("Content-Disposition", "inline", filename=path)
+        email.attach(mime_attachment)
+
+    return True
+
+
 @actor(description=_("Send email."))
 def send_mail(
     message: dict[Any, Any],
@@ -82,17 +117,20 @@ def send_mail(
     # we need to rebuild them from a dict
     message_object = EmailMultiAlternatives()
     for key, value in message.items():
+        if key == "template_context":
+            continue
         setattr(message_object, key, value)
     if not stage.use_global_settings:
         message_object.from_email = stage.from_address
     # Because we use the Message-ID as UID for the task, manually assign it
     message_object.extra_headers["Message-ID"] = message_id
 
-    # Add the logo if it is used in the email body (we can't add it in the
+    # Add the attachments (we can't add it in the
     # previous message since MIMEImage can't be converted to json)
-    body = get_email_body(message_object)
-    if "cid:logo" in body:
-        message_object.attach(logo_data())
+    if not process_attachments(
+        self, message_object, message.get("template_context", {}).get("attachments", {})
+    ):
+        return
 
     if (
         message_object.to
