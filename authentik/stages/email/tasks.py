@@ -15,6 +15,7 @@ from dramatiq.composition import group
 from structlog.stdlib import get_logger
 
 from authentik.events.models import Event, EventAction
+from authentik.lib.config import CONFIG
 from authentik.lib.utils.reflection import class_to_path, path_to_class
 from authentik.stages.authenticator_email.models import AuthenticatorEmailStage
 from authentik.stages.email.models import EmailStage
@@ -57,18 +58,27 @@ def get_email_body(email: EmailMultiAlternatives) -> str:
 
 
 def process_attachments(self: Task, email: EmailMultiAlternatives, attachments) -> bool:
+    attachments_failed = []
     for path, attachment in attachments.items():
         result = finders.find(path)
 
         if result is None:
+            LOGGER.error(
+                "Could not find attachment file",
+                path=path,
+                searched_locations=finders.searched_locations,
+            )
             self.error(f"Could not find file {path}. Looked in {finders.searched_locations}")
-            return False
+            attachments_failed.append(path)
+            continue
 
         result = Path(result)
 
         if not result.is_file():
+            LOGGER.error("Could not find attachment", path=path)
             self.error("Could not find file " + path)
-            return False
+            attachments_failed.append(path)
+            continue
 
         with open(result, "rb") as _file:
             content = _file.read()
@@ -76,15 +86,17 @@ def process_attachments(self: Task, email: EmailMultiAlternatives, attachments) 
         if attachment["type"] == AttachmentType.IMAGE:
             mime_attachment = MIMEImage(content)
         else:
+            LOGGER.error("Unsupported attachment", path=path, type=attachment["type"])
             self.error("Unsupported attachment " + path)
-            return False
+            attachments_failed.append(path)
+            continue
 
         content_id = attachment["content_id"]
         mime_attachment.add_header("Content-ID", f"<{content_id}>")
         mime_attachment.add_header("Content-Disposition", "inline", filename=path)
         email.attach(mime_attachment)
 
-    return True
+    return attachments_failed
 
 
 @actor(description=_("Send email."))
@@ -127,10 +139,16 @@ def send_mail(
 
     # Add the attachments (we can't add it in the
     # previous message since MIMEImage can't be converted to json)
-    if not process_attachments(
-        self, message_object, message.get("template_context", {}).get("attachments", {})
-    ):
-        return
+    attachments = message.get("template_context", {}).get("attachments", {})
+    failed_attachments = process_attachments(self, message_object, attachments)
+    if len(failed_attachments) > 0:
+        LOGGER.warning(
+            "failed to process attachments",
+            attachments=attachments,
+            failed_attachments=failed_attachments,
+        )
+        if CONFIG.get_bool("suse.stop_mail_on_failed_attachments", False):
+            return
 
     if (
         message_object.to
