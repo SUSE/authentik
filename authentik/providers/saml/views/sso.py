@@ -156,4 +156,5 @@ class SAMLSSOBindingInitView(SAMLSSOView):
         """Create SAML Response from scratch"""
         LOGGER.debug("No SAML Request, using IdP-initiated flow.")
         auth_n_request = AuthNRequestParser(self.provider).idp_initiated()
+        auth_n_request.relay_state = self.request.GET.get(REQUEST_KEY_RELAY_STATE)
         self.plan_context[PLAN_CONTEXT_SAML_AUTH_N_REQUEST] = auth_n_request
