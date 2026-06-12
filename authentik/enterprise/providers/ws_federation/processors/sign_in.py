@@ -26,7 +26,7 @@ from authentik.enterprise.providers.ws_federation.processors.constants import (
 from authentik.lib.utils.time import timedelta_from_string
 from authentik.policies.utils import delete_none_values
 from authentik.providers.saml.processors.assertion import AssertionProcessor
-from authentik.providers.saml.processors.authn_request_parser import AuthNRequest
+from authentik.providers.saml.processors.authn_request_parser import AuthNRequestParser
 from authentik.providers.saml.utils.time import get_time_string
 
 
@@ -82,7 +82,7 @@ class SignInProcessor:
         self.provider = provider
         self.request = request
         self.sign_in_request = sign_in_request
-        self.saml_processor = AssertionProcessor(self.provider, self.request, AuthNRequest())
+        self.saml_processor = AssertionProcessor(self.provider, self.request, AuthNRequestParser(self.provider).idp_initiated())
         self.saml_processor.provider.audience = self.sign_in_request.wtrealm
         if self.provider.signing_kp:
             self.saml_processor.provider.sign_assertion = True
