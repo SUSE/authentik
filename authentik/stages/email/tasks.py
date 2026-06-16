@@ -56,19 +56,29 @@ def get_email_body(email: EmailMultiAlternatives) -> str:
     return email.body
 
 
-def process_attachments(self: Task, email: EmailMultiAlternatives, attachments) -> bool:
+def process_attachments(self: Task, email: EmailMultiAlternatives, attachments):
     for path, attachment in attachments.items():
         result = finders.find(path)
 
         if result is None:
+            LOGGER.error(
+                "Could not find attachment file",
+                path=path,
+                searched_locations=finders.searched_locations,
+            )
             self.error(f"Could not find file {path}. Looked in {finders.searched_locations}")
-            return False
+            continue
 
         result = Path(result)
 
         if not result.is_file():
-            self.error("Could not find file " + path)
-            return False
+            LOGGER.error(
+                "Attachment path is not a file",
+                path=path,
+                searched_locations=finders.searched_locations,
+            )
+            self.error("Attachment path is not a file " + path)
+            continue
 
         with open(result, "rb") as _file:
             content = _file.read()
@@ -76,15 +86,13 @@ def process_attachments(self: Task, email: EmailMultiAlternatives, attachments) 
         if attachment["type"] == AttachmentType.IMAGE:
             mime_attachment = MIMEImage(content)
         else:
-            self.error("Unsupported attachment " + path)
-            return False
+            self.error("Unsupported attachment type" + type)
+            continue
 
         content_id = attachment["content_id"]
         mime_attachment.add_header("Content-ID", f"<{content_id}>")
         mime_attachment.add_header("Content-Disposition", "inline", filename=path)
         email.attach(mime_attachment)
-
-    return True
 
 
 @actor(description=_("Send email."))
@@ -127,10 +135,9 @@ def send_mail(
 
     # Add the attachments (we can't add it in the
     # previous message since MIMEImage can't be converted to json)
-    if not process_attachments(
+    process_attachments(
         self, message_object, message.get("template_context", {}).get("attachments", {})
-    ):
-        return
+    )
 
     if (
         message_object.to
