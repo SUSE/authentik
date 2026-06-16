@@ -3,7 +3,7 @@ name = "authentik"
 version = "2026.2.4"
 description = ""
 authors = [{ name = "authentik Team", email = "hello@goauthentik.io" }]
-requires-python = "==3.14.*"
+requires-python = "==3.13.*"
 dependencies = [
   "ak-guardian==3.2.0",
   "argon2-cffi==25.1.0",
@@ -188,12 +188,12 @@ ignore-words = ".github/codespell-words.txt"
 
 [tool.black]
 line-length = 100
-target-version = ['py314']
+target-version = ['py313']
 exclude = 'node_modules'
 
 [tool.ruff]
 line-length = 100
-target-version = "py314"
+target-version = "py313"
 exclude = ["**/migrations/**", "**/node_modules/**"]
 
 [tool.ruff.lint]
@@ -210,6 +210,11 @@ select = [
 ignore = [
   "DJ001",   # Avoid using `null=True` on string-based fields,
   "PLC0415", # `import` should be at the top-level of a file
+
+
+  # to simplify downstream patching
+  "E402",    # order of custom imports
+  "UP037",   # forward annotations for < 3.14
 ]
 
 [tool.ruff.lint.pylint]
