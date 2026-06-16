@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """authentik OAuth2 Authorization views"""
 
 from dataclasses import InitVar, dataclass, field

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Outpost models"""
 
 from collections.abc import Iterable

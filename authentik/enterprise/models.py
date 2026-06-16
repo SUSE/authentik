@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Enterprise models"""
 
 from datetime import timedelta

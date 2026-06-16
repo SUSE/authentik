@@ -126,7 +126,7 @@ def extract_client_auth(request: HttpRequest) -> tuple[str, str]:
             # We only percent-decode here so raw `+` characters keep their previous meaning.
             client_id = unquote(client_id)
             client_secret = unquote(client_secret)
-        except ValueError, Error:
+        except (ValueError, Error):
             client_id = client_secret = ""  # nosec
     else:
         client_id = request.POST.get("client_id", "")

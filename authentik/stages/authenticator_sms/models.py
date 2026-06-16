@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """SMS Authenticator models"""
 
 from hashlib import sha256

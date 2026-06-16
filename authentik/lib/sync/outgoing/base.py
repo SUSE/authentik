@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Basic outgoing sync Client"""
 
 from enum import StrEnum

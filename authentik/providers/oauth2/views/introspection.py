@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """authentik OAuth2 Token Introspection Views"""
 
 from dataclasses import dataclass, field

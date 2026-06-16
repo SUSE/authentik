@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Flows Planner"""
 
 from dataclasses import dataclass, field

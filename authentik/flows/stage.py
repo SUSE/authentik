@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """authentik stage Base view"""
 
 from typing import TYPE_CHECKING

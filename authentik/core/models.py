@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """authentik core models"""
 
 import re

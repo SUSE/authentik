@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Callable
 from copy import copy
 from functools import wraps
@@ -29,7 +31,7 @@ class Flag[T]:
         flags = {}
         try:
             flags: dict[str, Any] = get_current_tenant(["flags"]).flags
-        except DatabaseError, ProgrammingError, InternalError:
+        except (DatabaseError, ProgrammingError, InternalError):
             pass
         value = flags.get(cls.__key, None)
         if value is None:

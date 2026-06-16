@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """transfer common classes"""
 
 from collections import OrderedDict

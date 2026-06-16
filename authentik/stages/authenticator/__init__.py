@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Authenticator devices helpers"""
 
 from typing import TYPE_CHECKING

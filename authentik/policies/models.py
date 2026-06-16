@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Policy base models"""
 
 from uuid import uuid4

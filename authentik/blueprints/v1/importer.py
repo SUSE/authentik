@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Blueprint importer"""
 
 from contextlib import contextmanager

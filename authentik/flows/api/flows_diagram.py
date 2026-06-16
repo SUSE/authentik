@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Flows Diagram API"""
 
 from dataclasses import dataclass, field

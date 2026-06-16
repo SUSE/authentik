@@ -128,7 +128,7 @@ class SPNEGOView(View):
 
         try:
             in_token = b64decode(authstr)
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             return self.challenge(request)
 
         with Krb5ConfContext(self.source):

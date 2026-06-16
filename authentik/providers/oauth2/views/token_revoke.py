@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Token revocation endpoint"""
 
 from dataclasses import dataclass

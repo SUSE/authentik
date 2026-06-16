@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """authentik policy engine"""
 
 from collections.abc import Iterable

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Avatar utils"""
 
 from base64 import b64encode
@@ -187,7 +189,7 @@ def avatar_mode_url(user: User, mode: str) -> str | None:
             cache.set(cache_key_image_url, None, timeout=AVATAR_STATUS_TTL_SECONDS)
             return None
         res.raise_for_status()
-    except Timeout, ConnectionError, HTTPError:
+    except (Timeout, ConnectionError, HTTPError):
         cache.set(cache_key_hostname_available, False, timeout=AVATAR_STATUS_TTL_SECONDS)
         return None
     except RequestException:

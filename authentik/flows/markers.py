@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Stage Markers"""
 
 from dataclasses import dataclass

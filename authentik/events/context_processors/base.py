@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Base event enricher"""
 
 from functools import cache

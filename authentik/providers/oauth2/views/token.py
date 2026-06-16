@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """authentik OAuth2 Token views"""
 
 from base64 import b64decode
@@ -330,7 +332,7 @@ class TokenParams:
         try:
             user, _, password = b64decode(self.client_secret).decode("utf-8").partition(":")
             return self.__post_init_client_credentials_creds(request, user, password)
-        except ValueError, Error:
+        except (ValueError, Error):
             raise TokenError("invalid_grant") from None
 
     def __post_init_client_credentials_creds(

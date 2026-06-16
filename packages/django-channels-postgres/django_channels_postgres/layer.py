@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import functools
 import types
@@ -276,7 +278,7 @@ class PostgresChannelLoopLayer(BaseChannelLayer):
                                 (message_id,),
                             )
                 break
-        except asyncio.CancelledError, TimeoutError, GeneratorExit:
+        except (asyncio.CancelledError, TimeoutError, GeneratorExit):
             # We assume here that the reason we are cancelled is because the consumer
             # is exiting, therefore we need to cleanup by unsubscribe below. Indeed,
             # currently the way that Django Channels works, this is a safe assumption.
@@ -509,7 +511,7 @@ class PostgresChannelLayerReceiver:
                     while True:
                         async for notify in conn.notifies(timeout=30):
                             await self._receive_notify(notify)
-            except asyncio.CancelledError, TimeoutError, GeneratorExit:
+            except (asyncio.CancelledError, TimeoutError, GeneratorExit):
                 raise
             except PsycopgError as exc:
                 LOGGER.warning("Postgres connection is not healthy", exc=exc)

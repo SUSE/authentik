@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Migration helpers"""
 
 from collections.abc import Iterable

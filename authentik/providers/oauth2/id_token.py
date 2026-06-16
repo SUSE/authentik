@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """id_token utils"""
 
 from dataclasses import asdict, dataclass, field

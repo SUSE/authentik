@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """authentik expression policy evaluator"""
 
 from ipaddress import ip_address

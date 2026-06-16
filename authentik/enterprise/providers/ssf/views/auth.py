@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """SSF Token auth"""
 
 from typing import TYPE_CHECKING, Any

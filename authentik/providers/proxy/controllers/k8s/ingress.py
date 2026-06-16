@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Kubernetes Ingress Reconciler"""
 
 from typing import TYPE_CHECKING

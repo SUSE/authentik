@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Kubernetes Traefik Middleware Reconciler"""
 
 from dataclasses import asdict, dataclass, field

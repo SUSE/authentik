@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Kubernetes Prometheus ServiceMonitor Reconciler"""
 
 from dataclasses import asdict, dataclass, field

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """OAuth Provider Models"""
 
 import base64

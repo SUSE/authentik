@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """authentik events models"""
 
 from collections.abc import Generator

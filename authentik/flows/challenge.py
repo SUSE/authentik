@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Challenge helpers"""
 
 from dataclasses import asdict, is_dataclass

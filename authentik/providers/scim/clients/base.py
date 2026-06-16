@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """SCIM Client"""
 
 from typing import TYPE_CHECKING

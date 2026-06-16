@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Flow models"""
 
 from base64 import b64decode, b64encode

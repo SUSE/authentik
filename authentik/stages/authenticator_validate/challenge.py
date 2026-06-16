@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Validation stage challenge checking"""
 
 from typing import TYPE_CHECKING
