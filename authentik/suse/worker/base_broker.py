@@ -4,7 +4,7 @@ import threading
 import time
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
-from typing import Any, ParamSpec, TypeVar, cast
+from typing import Any, cast
 
 import tenacity
 from django.core.exceptions import ImproperlyConfigured
@@ -41,10 +41,6 @@ from authentik.tasks.models import TaskLog
 
 logger = get_logger(__name__)
 
-P = ParamSpec("P")
-R = TypeVar("R")
-
-
 DATABASE_ERRORS = (
     AdminShutdown,
     IdleSessionTimeout,
@@ -59,7 +55,7 @@ def channel_name(queue_name: str, identifier: ChannelIdentifier) -> str:
     return f"{CHANNEL_PREFIX}.{queue_name}.{identifier.value}"
 
 
-def raise_connection_error(func: Callable[P, R]) -> Callable[P, R]:
+def raise_connection_error[**P, R](func: Callable[P, R]) -> Callable[P, R]:
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
