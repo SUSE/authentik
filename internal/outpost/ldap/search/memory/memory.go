@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"beryju.io/ldap"
@@ -52,7 +53,23 @@ func NewMemorySearcher(si server.LDAPServerInstance, existing search.Searcher) *
 
 func (ms *MemorySearcher) fetch() {
 	// Error is not handled here, we get an empty/truncated list and the error is logged
-	users, _ := ak.Paginator(ms.si.GetAPIClient().CoreAPI.CoreUsersList(context.TODO()).IncludeGroups(true), ak.PaginatorOptions{
+	userRequest := ms.si.GetAPIClient().CoreAPI.CoreUsersList(context.TODO())
+
+	/*
+			Hotfix. the better solution would be to identify which users actually have access to the provider this
+			MemorySearcher is assigned to.
+
+			That should be easy enough by looking for assigned applications and on those for assigned groups/users.
+			The hard part would be dynamic policies for access to applications. We can possibly ignore that
+		    or use direct searches for cache-misses but that wouldn't work for searches where we don't look for a username but scan the entire directory
+	*/
+	pathFilter := os.Getenv("FILTER_USER_PATH")
+
+	if pathFilter != "" {
+		userRequest = userRequest.Path(pathFilter)
+	}
+
+	users, _ := ak.Paginator(userRequest.IncludeGroups(true), ak.PaginatorOptions{
 		PageSize: 100,
 		Logger:   ms.log,
 	})
