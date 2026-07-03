@@ -21,6 +21,7 @@ import (
 	"goauthentik.io/internal/outpost/ldap/search/direct"
 	"goauthentik.io/internal/outpost/ldap/server"
 	"goauthentik.io/internal/outpost/ldap/utils"
+	"golang.org/x/sync/semaphore"
 )
 
 type MemorySearcher struct {
@@ -52,16 +53,123 @@ func NewMemorySearcher(si server.LDAPServerInstance, existing search.Searcher) *
 }
 
 func (ms *MemorySearcher) fetch() {
-	// Error is not handled here, we get an empty/truncated list and the error is logged
-	users, _ := ak.Paginator(ms.si.GetAPIClient().CoreAPI.CoreUsersList(context.TODO()).IncludeGroups(true), ak.PaginatorOptions{
+	client := ms.si.GetAPIClient()
+
+	application, _, err := client.CoreAPI.CoreApplicationsRetrieve(context.TODO(), ms.si.GetAppSlug()).Execute()
+	if err != nil {
+		ms.log.WithError(err).Warning("Failed to fetch assigned application")
+		return
+	}
+	ms.log.Info("Fetched assigned application")
+
+	bindings, err := ak.Paginator(client.PoliciesAPI.PoliciesBindingsList(context.Background()).Target(application.Pk), ak.PaginatorOptions{
 		PageSize: config.Get().LDAP.PageSize,
 		Logger:   ms.log,
 	})
+
+	if err != nil {
+		ms.log.WithError(err).Warning("Failed to fetch assigned policy bindings")
+		return
+	}
+
+	usersToFetch := make(map[int32]struct{})
+	groupToFetch := make(map[string]struct{})
+
+	fetchAll := false
+
+	// No bindings means every user in authentik has access -> get entire directory
+	noBindings := true
+
+	for _, binding := range bindings {
+
+		if binding.Enabled == nil || *binding.Enabled == false {
+			continue
+		}
+
+		noBindings = false
+
+		if group := binding.GetGroup(); group != "" {
+			groupToFetch[group] = struct{}{}
+		}
+
+		if user := binding.GetUser(); user != 0 {
+			usersToFetch[user] = struct{}{}
+		}
+
+		if policy := binding.GetPolicy(); policy != "" {
+			// Fall back to getting the entire directory
+			fetchAll = true
+		}
+	}
+
+	ms.log.Info("Fetched bindings")
+
+	if fetchAll || noBindings {
+		// Error is not handled here, we get an empty/truncated list and the error is logged
+		users, _ := ak.Paginator(ms.si.GetAPIClient().CoreAPI.CoreUsersList(context.TODO()).IncludeGroups(true), ak.PaginatorOptions{
+			PageSize: config.Get().LDAP.PageSize,
+			Logger:   ms.log,
+		})
+		ms.users = users
+		groups, _ := ak.Paginator(ms.si.GetAPIClient().CoreAPI.CoreGroupsList(context.TODO()).IncludeUsers(true).IncludeChildren(true).IncludeParents(true), ak.PaginatorOptions{
+			PageSize: config.Get().LDAP.PageSize,
+			Logger:   ms.log,
+		})
+		ms.groups = groups
+		return
+	}
+
+	groups := make([]api.Group, 0, len(groupToFetch))
+
+	for id := range groupToFetch {
+		group, _, err := ms.si.GetAPIClient().CoreAPI.CoreGroupsRetrieve(context.TODO(), id).Execute()
+
+		if err != nil {
+			ms.log.WithError(err).Warning("Failed to fetch assigned user")
+			return
+		}
+
+		groups = append(groups, *group)
+
+		// Add the group users to the fetch list too
+		for _, user := range group.GetUsers() {
+			usersToFetch[user] = struct{}{}
+		}
+	}
+
+	ms.log.Info("Fetched groups")
+
+	users := make([]api.User, 0, len(usersToFetch))
+
+	ch := make(chan *api.User, len(usersToFetch))
+
+	var limit = semaphore.NewWeighted(10)
+
+	ctx := context.Background()
+	for uid := range usersToFetch {
+		if err := limit.Acquire(ctx, 1); err != nil {
+			return
+		}
+		go func() {
+			defer limit.Release(1)
+			user, _, err := ms.si.GetAPIClient().CoreAPI.CoreUsersRetrieve(context.TODO(), uid).Execute()
+			if err != nil {
+				ms.log.WithError(err).Warning("Failed to fetch assigned user")
+				return
+			}
+
+			ch <- user
+		}()
+	}
+
+	for range usersToFetch {
+		user := <-ch
+		users = append(users, *user)
+	}
+
+	ms.log.Info("Fetched users")
+
 	ms.users = users
-	groups, _ := ak.Paginator(ms.si.GetAPIClient().CoreAPI.CoreGroupsList(context.TODO()).IncludeUsers(true).IncludeChildren(true).IncludeParents(true), ak.PaginatorOptions{
-		PageSize: config.Get().LDAP.PageSize,
-		Logger:   ms.log,
-	})
 	ms.groups = groups
 }
 
