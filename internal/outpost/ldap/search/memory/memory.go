@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
+	"runtime"
 	"strings"
 
 	"beryju.io/ldap"
@@ -21,6 +21,7 @@ import (
 	"goauthentik.io/internal/outpost/ldap/search/direct"
 	"goauthentik.io/internal/outpost/ldap/server"
 	"goauthentik.io/internal/outpost/ldap/utils"
+	"golang.org/x/sync/semaphore"
 )
 
 type MemorySearcher struct {
@@ -32,7 +33,7 @@ type MemorySearcher struct {
 	groups []api.Group
 }
 
-func NewMemorySearcher(si server.LDAPServerInstance, existing search.Searcher) *MemorySearcher {
+func NewMemorySearcher(si server.LDAPServerInstance, existing search.Searcher, client *api.APIClient) *MemorySearcher {
 	ms := &MemorySearcher{
 		si:  si,
 		log: log.WithField("logger", "authentik.outpost.ldap.searcher.memory"),
@@ -41,44 +42,135 @@ func NewMemorySearcher(si server.LDAPServerInstance, existing search.Searcher) *
 	if existing != nil {
 		if ems, ok := existing.(*MemorySearcher); ok {
 			ems.si = si
-			ems.fetch()
+			ems.fetch(client)
 			ems.log.Debug("re-initialised memory searcher")
 			return ems
 		}
 	}
-	ms.fetch()
+	ms.fetch(client)
 	ms.log.Debug("initialised memory searcher")
 	return ms
 }
 
-func (ms *MemorySearcher) fetch() {
-	// Error is not handled here, we get an empty/truncated list and the error is logged
-	userRequest := ms.si.GetAPIClient().CoreAPI.CoreUsersList(context.TODO())
+func (ms *MemorySearcher) fetch(client *api.APIClient) {
+	application, _, err := client.CoreAPI.CoreApplicationsRetrieve(context.TODO(), ms.si.GetAppSlug()).Execute()
+	if err != nil {
+		ms.log.WithError(err).Warning("Failed to fetch assigned application")
+		return
+	}
+	ms.log.Info("Fetched assigned application")
 
-	/*
-			Hotfix. the better solution would be to identify which users actually have access to the provider this
-			MemorySearcher is assigned to.
+	bindings, err := ak.Paginator(client.PoliciesAPI.PoliciesBindingsList(context.Background()).Target(application.Pk), ak.PaginatorOptions{
+		PageSize: 100,
+		Logger:   ms.log,
+	})
 
-			That should be easy enough by looking for assigned applications and on those for assigned groups/users.
-			The hard part would be dynamic policies for access to applications. We can possibly ignore that
-		    or use direct searches for cache-misses but that wouldn't work for searches where we don't look for a username but scan the entire directory
-	*/
-	pathFilter := os.Getenv("FILTER_USER_PATH")
-
-	if pathFilter != "" {
-		userRequest = userRequest.Path(pathFilter)
+	if err != nil {
+		ms.log.WithError(err).Warning("Failed to fetch assigned policy bindings")
+		return
 	}
 
-	users, _ := ak.Paginator(userRequest.IncludeGroups(true), ak.PaginatorOptions{
-		PageSize: 100,
-		Logger:   ms.log,
-	})
+	usersToFetch := make(map[int32]struct{})
+	groupToFetch := make(map[string]struct{})
+
+	fetchAll := false
+
+	// No bindings means every user in authentik has access -> get entire directory
+	noBindings := true
+
+	for _, binding := range bindings {
+
+		if binding.Enabled == nil || *binding.Enabled == false {
+			continue
+		}
+
+		noBindings = false
+
+		if group := binding.GetGroup(); group != "" {
+			groupToFetch[group] = struct{}{}
+		}
+
+		if user := binding.GetUser(); user != 0 {
+			usersToFetch[user] = struct{}{}
+		}
+
+		if policy := binding.GetPolicy(); policy != "" {
+			// Fall back to getting the entire directory
+			fetchAll = true
+		}
+	}
+
+	ms.log.Info("Fetched bindings")
+
+	if fetchAll || noBindings {
+		// Error is not handled here, we get an empty/truncated list and the error is logged
+		users, _ := ak.Paginator(ms.si.GetAPIClient().CoreAPI.CoreUsersList(context.TODO()).IncludeGroups(true), ak.PaginatorOptions{
+			PageSize: 100,
+			Logger:   ms.log,
+		})
+		ms.users = users
+		groups, _ := ak.Paginator(ms.si.GetAPIClient().CoreAPI.CoreGroupsList(context.TODO()).IncludeUsers(true).IncludeChildren(true).IncludeParents(true), ak.PaginatorOptions{
+			PageSize: 100,
+			Logger:   ms.log,
+		})
+		ms.groups = groups
+		return
+	}
+
+	groups := make([]api.Group, 0, len(groupToFetch))
+
+	for id := range groupToFetch {
+		group, _, err := ms.si.GetAPIClient().CoreAPI.CoreGroupsRetrieve(context.TODO(), id).Execute()
+
+		if err != nil {
+			ms.log.WithError(err).Warning("Failed to fetch assigned user")
+			return
+		}
+
+		groups = append(groups, *group)
+
+		// Add the group users to the fetch list too
+		for _, user := range group.GetUsers() {
+			usersToFetch[user] = struct{}{}
+		}
+	}
+
+	ms.log.Info("Fetched groups")
+
+	users := make([]api.User, 0, len(usersToFetch))
+
+	ch := make(chan *api.User, len(usersToFetch))
+
+	var limit = semaphore.NewWeighted(10)
+
+	ctx := context.Background()
+	for uid := range usersToFetch {
+		if err := limit.Acquire(ctx, 1); err != nil {
+			return
+		}
+		go func() {
+			defer limit.Release(1)
+			user, _, err := ms.si.GetAPIClient().CoreAPI.CoreUsersRetrieve(context.TODO(), uid).Execute()
+			if err != nil {
+				ms.log.WithError(err).Warning("Failed to fetch assigned user")
+				return
+			}
+
+			ch <- user
+		}()
+	}
+
+	for range usersToFetch {
+		user := <-ch
+		users = append(users, *user)
+	}
+
+	ms.log.Info("Fetched users")
+
 	ms.users = users
-	groups, _ := ak.Paginator(ms.si.GetAPIClient().CoreAPI.CoreGroupsList(context.TODO()).IncludeUsers(true).IncludeChildren(true).IncludeParents(true), ak.PaginatorOptions{
-		PageSize: 100,
-		Logger:   ms.log,
-	})
 	ms.groups = groups
+
+	runtime.GC()
 }
 
 func (ms *MemorySearcher) SearchBase(req *search.Request) (ldap.ServerSearchResult, error) {
