@@ -51294,12 +51294,9 @@ components:
           type: boolean
           description: Result if the Policy execution fails.
       required:
-      - group_obj
       - order
       - pk
-      - policy_obj
       - target
-      - user_obj
     PolicyBindingRequest:
       type: object
       description: PolicyBinding Serializer
