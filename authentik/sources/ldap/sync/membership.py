@@ -10,10 +10,11 @@ from ldap3.utils.conv import escape_filter_chars
 from authentik.core.models import Group, User
 from authentik.sources.ldap.models import LDAP_DISTINGUISHED_NAME, LDAP_UNIQUENESS, LDAPSource
 from authentik.sources.ldap.sync.base import BaseLDAPSynchronizer
+from authentik.suse.ldap.membership_synchronizer import MembershipSynchronizer
 from authentik.tasks.models import Task
 
 
-class MembershipLDAPSynchronizer(BaseLDAPSynchronizer):
+class _MembershipLDAPSynchronizer(BaseLDAPSynchronizer):
     """Sync LDAP Users and groups into authentik"""
 
     group_cache: dict[str, Group]
@@ -114,3 +115,7 @@ class MembershipLDAPSynchronizer(BaseLDAPSynchronizer):
                 return None
             self.group_cache[group_uniq] = groups.first()
         return self.group_cache[group_uniq]
+
+
+class MembershipLDAPSynchronizer(MembershipSynchronizer, _MembershipLDAPSynchronizer):
+    pass

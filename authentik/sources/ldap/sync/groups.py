@@ -21,10 +21,11 @@ from authentik.sources.ldap.models import (
     flatten,
 )
 from authentik.sources.ldap.sync.base import BaseLDAPSynchronizer
+from authentik.suse.ldap.group_synchronizer import GroupSynchronizer
 from authentik.tasks.models import Task
 
 
-class GroupLDAPSynchronizer(BaseLDAPSynchronizer):
+class _GroupLDAPSynchronizer(BaseLDAPSynchronizer):
     """Sync LDAP Users and groups into authentik"""
 
     def __init__(self, source: LDAPSource, task: Task):
@@ -122,3 +123,7 @@ class GroupLDAPSynchronizer(BaseLDAPSynchronizer):
                 self._logger.debug("Synced group", group=ak_group.name, created=created)
                 group_count += 1
         return group_count
+
+
+class GroupLDAPSynchronizer(GroupSynchronizer, _GroupLDAPSynchronizer):
+    pass
