@@ -1,9 +1,10 @@
 """LDAP Sync tasks"""
-import datetime
+
 from uuid import uuid4
 
 from django.core.cache import cache
 from django.db import transaction
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from dramatiq.actor import actor
 from dramatiq.composition import group
@@ -68,7 +69,7 @@ def ldap_sync(source_pk: str):
             LOGGER.debug("Failed to acquire lock for LDAP sync, skipping task", source=source.slug)
             return
 
-        start_time = datetime.datetime.now()
+        start_time = now()
 
         user_group_tasks = group(
             ldap_sync_paginator(task, source, UserLDAPSynchronizer)
