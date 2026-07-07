@@ -271,9 +271,7 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
             self._request(
                 "PATCH",
                 f"/Groups/{group_id}",
-                json=req.model_dump(
-                    mode="json",
-                ),
+                json=req.model_dump(mode="json", exclude_none=True),
             )
 
     @transaction.atomic
@@ -391,13 +389,7 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
             *[
                 PatchOperation(
                     op=PatchOp.remove,
-                    path="members",
-                    value=[
-                        GroupMember(value=x).model_dump(
-                            mode="json",
-                            exclude_unset=True,
-                        )
-                    ],
+                    path=f'members[value eq "{x}"]',
                 )
                 for x in user_ids
             ],
