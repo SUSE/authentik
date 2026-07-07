@@ -23,6 +23,7 @@ from authentik.sources.ldap.models import (
 from authentik.sources.ldap.sync.base import BaseLDAPSynchronizer
 from authentik.sources.ldap.sync.vendor.freeipa import FreeIPA
 from authentik.sources.ldap.sync.vendor.ms_ad import MicrosoftActiveDirectory
+from authentik.suse.ldap.utils import suse_get_ldap_filter
 from authentik.tasks.models import Task
 
 
@@ -42,9 +43,10 @@ class UserLDAPSynchronizer(BaseLDAPSynchronizer):
         if not self._source.sync_users:
             self._task.info("User syncing is disabled for this Source")
             return iter(())
+
         return self.search_paginator(
             search_base=self.base_dn_users,
-            search_filter=self._source.user_object_filter,
+            search_filter=suse_get_ldap_filter(self._source.pk, self._source.user_object_filter),
             search_scope=SUBTREE,
             attributes=[
                 ALL_ATTRIBUTES,

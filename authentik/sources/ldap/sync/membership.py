@@ -10,6 +10,7 @@ from ldap3.utils.conv import escape_filter_chars
 from authentik.core.models import Group, User
 from authentik.sources.ldap.models import LDAP_DISTINGUISHED_NAME, LDAP_UNIQUENESS, LDAPSource
 from authentik.sources.ldap.sync.base import BaseLDAPSynchronizer
+from authentik.suse.ldap.utils import suse_get_ldap_filter
 from authentik.tasks.models import Task
 
 
@@ -38,7 +39,7 @@ class MembershipLDAPSynchronizer(BaseLDAPSynchronizer):
 
         return self.search_paginator(
             search_base=self.base_dn_groups,
-            search_filter=self._source.group_object_filter,
+            search_filter=suse_get_ldap_filter(self._source.pk, self._source.group_object_filter),
             search_scope=SUBTREE,
             attributes=attributes,
             **kwargs,
