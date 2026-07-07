@@ -24,7 +24,9 @@ scheduler_class = CONFIG.get(
     "worker.scheduler_class", "authentik.tasks.schedules.scheduler.Scheduler"
 )
 # Configure the results Backend
-result_backend = CONFIG.get("worker.result_backend", "django_dramatiq_postgres.results.PostgresBackend")
+result_backend = CONFIG.get(
+    "worker.result_backend", "django_dramatiq_postgres.results.PostgresBackend"
+)
 
 # Insert the middleware next to LoggingMiddleware
 middleware_pivot = next(
@@ -57,3 +59,16 @@ DRAMATIQ.update(BASE_DRAMATIQ)
 DRAMATIQ.update(DRAMATIQ_EXTRAS)
 
 CONFIG.log("info", f"Loaded Dramatiq with settings DRAMATIQ={DRAMATIQ})")
+
+CONSTRAINTS = {
+    "email": {
+        "restricted_domains": [],
+        "roles_domains": {},
+    }
+}
+
+for role, acls in CONFIG.get_dict_from_b64_json("suse.constraints.email", {}).items():
+    CONSTRAINTS["email"]["restricted_domains"].extend(acls.get("allow", []))
+    CONSTRAINTS["email"]["roles_domains"][role] = acls
+
+CONFIG.log("info", f"Loaded CONSTRAINTS={CONSTRAINTS}")
