@@ -1,9 +1,12 @@
 """LDAP Source tests"""
-
+import datetime
+from datetime import UTC
 from unittest.mock import MagicMock, patch
 
 from django.db.models import Q
 from django.test import TestCase
+from dramatiq.composition import group
+from freezegun import freeze_time
 from ldap3.core.exceptions import LDAPInvalidFilterError
 from ldap3.utils.conv import escape_filter_chars
 
@@ -24,7 +27,7 @@ from authentik.sources.ldap.sync.forward_delete_users import DELETE_CHUNK_SIZE
 from authentik.sources.ldap.sync.groups import GroupLDAPSynchronizer
 from authentik.sources.ldap.sync.membership import MembershipLDAPSynchronizer
 from authentik.sources.ldap.sync.users import UserLDAPSynchronizer
-from authentik.sources.ldap.tasks import ldap_sync, ldap_sync_page
+from authentik.sources.ldap.tasks import ldap_sync, ldap_sync_page, ldap_sync_paginator
 from authentik.sources.ldap.tests.mock_ad import mock_ad_connection
 from authentik.sources.ldap.tests.mock_freeipa import mock_freeipa_connection
 from authentik.sources.ldap.tests.mock_slapd import (
@@ -34,6 +37,8 @@ from authentik.sources.ldap.tests.mock_slapd import (
     user_in_slapd_cn,
     user_in_slapd_uid,
 )
+from authentik.suse.ldap.models import SUSELdapSourceSyncState
+from authentik.suse.ldap.utils import suse_get_ldap_filter
 from authentik.tasks.models import Task
 
 LDAP_PASSWORD = generate_key()
@@ -364,6 +369,83 @@ class LDAPSyncTests(TestCase):
         connection = MagicMock(return_value=mock_slapd_connection(LDAP_PASSWORD))
         with patch("authentik.sources.ldap.models.LDAPSource.connection", connection):
             ldap_sync.send(self.source.pk)
+
+    def test_tasks_incremental(self):
+        """Test Scheduled tasks"""
+        self.source.object_uniqueness_field = "uid"
+        self.source.group_object_filter = "(objectClass=groupOfNames)"
+        self.source.user_property_mappings.set(
+            LDAPSourcePropertyMapping.objects.filter(
+                Q(managed__startswith="goauthentik.io/sources/ldap/default")
+                | Q(managed__startswith="goauthentik.io/sources/ldap/openldap")
+            )
+        )
+        self.source.save()
+        task = Task()
+
+        initial_datetime = datetime.datetime(
+            year=2000,
+            month=7,
+            day=12,
+            hour=15,
+            minute=6,
+            second=3,
+            tzinfo=datetime.timezone(offset=datetime.timedelta(hours=2)),
+        )
+
+        with freeze_time(initial_datetime) as frozen_datetime:
+            slapd_connection = mock_slapd_connection(LDAP_PASSWORD)
+
+            # Some time passes between object creation in ldap and import
+            frozen_datetime.tick()
+
+            connection = MagicMock(return_value=slapd_connection)
+            with patch("authentik.sources.ldap.models.LDAPSource.connection", connection):
+                # Test that the initial sync would generate some pages
+                user_group_tasks = group(
+                    ldap_sync_paginator(task, self.source, UserLDAPSynchronizer)
+                    + ldap_sync_paginator(task, self.source, GroupLDAPSynchronizer)
+                )
+
+                self.assertEqual(
+                    len(user_group_tasks),
+                    2,
+                    "User and group tasks should be 2 before first sync run",
+                )
+
+                self.assertEqual(
+                    suse_get_ldap_filter(self.source.pk, self.source.group_object_filter),
+                    self.source.group_object_filter,
+                )
+
+                # Now run the actual sync
+                ldap_sync.send(self.source.pk)
+
+                sync_state = SUSELdapSourceSyncState.objects.filter(
+                    ldap_source_id=self.source.pk
+                ).first()
+                self.assertTrue(sync_state, "sync_state should exist")
+                self.assertEqual(
+                    sync_state.last_modify_timestamp,
+                    datetime.datetime(2000, 7, 12, 13, 6, 4, tzinfo=UTC),
+                )
+
+                # Test that second run would generate zero tasks.
+
+                self.assertEqual(
+                    suse_get_ldap_filter(self.source.pk, self.source.group_object_filter),
+                    "(&(modifyTimestamp>=20000712130604Z)(objectClass=groupOfNames))",
+                )
+
+                user_group_tasks = group(
+                    ldap_sync_paginator(task, self.source, UserLDAPSynchronizer)
+                    + ldap_sync_paginator(task, self.source, GroupLDAPSynchronizer)
+                )
+                self.assertEqual(
+                    len(user_group_tasks),
+                    0,
+                    "User and group tasks should be empty after first sync run",
+                )
 
     def test_user_deletion(self):
         """Test user deletion"""

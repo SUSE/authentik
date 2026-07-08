@@ -116,4 +116,10 @@ class BaseLDAPSynchronizer:
                 ]
             except KeyError:
                 cookie = None
+
+            # Don't yield an empty page otherwise a task will be queued
+            # complaining about a missing page.
+            if not self._connection.response:
+                return
+
             yield self._connection.response

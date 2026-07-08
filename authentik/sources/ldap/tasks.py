@@ -1,8 +1,9 @@
 """LDAP Sync tasks"""
-
+import datetime
 from uuid import uuid4
 
 from django.core.cache import cache
+from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from dramatiq.actor import actor
 from dramatiq.composition import group
@@ -23,6 +24,7 @@ from authentik.sources.ldap.sync.forward_delete_users import UserLDAPForwardDele
 from authentik.sources.ldap.sync.groups import GroupLDAPSynchronizer
 from authentik.sources.ldap.sync.membership import MembershipLDAPSynchronizer
 from authentik.sources.ldap.sync.users import UserLDAPSynchronizer
+from authentik.suse.ldap.models import SUSELdapSourceSyncState
 from authentik.tasks.middleware import CurrentTask
 from authentik.tasks.models import Task
 
@@ -66,6 +68,8 @@ def ldap_sync(source_pk: str):
             LOGGER.debug("Failed to acquire lock for LDAP sync, skipping task", source=source.slug)
             return
 
+        start_time = datetime.datetime.now()
+
         user_group_tasks = group(
             ldap_sync_paginator(task, source, UserLDAPSynchronizer)
             + ldap_sync_paginator(task, source, GroupLDAPSynchronizer)
@@ -104,6 +108,16 @@ def ldap_sync(source_pk: str):
         deletion_tasks.run().wait(
             timeout=60 * 60 * CONFIG.get_int("ldap.task_timeout_hours") * 1000,
         )
+
+        with transaction.atomic():
+            sync_state, _ = SUSELdapSourceSyncState.objects.get_or_create(
+                ldap_source_id=source_pk,
+                defaults={
+                    "last_modify_timestamp": start_time,
+                },
+            )
+            sync_state.last_modify_timestamp = start_time
+            sync_state.save()
 
     if source.sync_outgoing_trigger_mode == SyncOutgoingTriggerMode.DEFERRED_END:
         for outgoing_sync_provider_cls in all_subclasses(OutgoingSyncProvider):

@@ -554,6 +554,9 @@ def _update_settings(app_path: str) -> None:
         pass
 
 
+TENANT_APPS.insert(TENANT_APPS.index("authentik.events"), "authentik.suse.ldap")
+
+
 if DEBUG:
     REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"].append(
         "rest_framework.renderers.BrowsableAPIRenderer"
