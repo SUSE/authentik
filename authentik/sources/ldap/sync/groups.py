@@ -21,7 +21,7 @@ from authentik.sources.ldap.models import (
     flatten,
 )
 from authentik.sources.ldap.sync.base import BaseLDAPSynchronizer
-from authentik.suse.ldap.utils import suse_get_ldap_filter
+from authentik.suse.sources.ldap.utils import suse_get_ldap_filter
 from authentik.tasks.models import Task
 
 

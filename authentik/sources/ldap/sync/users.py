@@ -23,7 +23,7 @@ from authentik.sources.ldap.models import (
 from authentik.sources.ldap.sync.base import BaseLDAPSynchronizer
 from authentik.sources.ldap.sync.vendor.freeipa import FreeIPA
 from authentik.sources.ldap.sync.vendor.ms_ad import MicrosoftActiveDirectory
-from authentik.suse.ldap.utils import suse_get_ldap_filter
+from authentik.suse.sources.ldap.utils import suse_get_ldap_filter
 from authentik.tasks.models import Task
 
 

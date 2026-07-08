@@ -37,8 +37,8 @@ from authentik.sources.ldap.tests.mock_slapd import (
     user_in_slapd_cn,
     user_in_slapd_uid,
 )
-from authentik.suse.ldap.models import SUSELdapSourceSyncState
-from authentik.suse.ldap.utils import suse_get_ldap_filter
+from authentik.suse.sources.ldap.models import SUSELdapSourceSyncState
+from authentik.suse.sources.ldap.utils import suse_get_ldap_filter
 from authentik.tasks.models import Task
 
 LDAP_PASSWORD = generate_key()
