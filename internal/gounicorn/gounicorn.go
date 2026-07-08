@@ -26,6 +26,7 @@ var (
 	manageCmd    string = "./manage.py"
 	gunicornCmd  string = "gunicorn"
 	daphneCmd    string = "daphne"
+	granianCmd   string = "granian"
 	uvicornCmd   string = "uvicorn"
 	gunicornConf string = "./lifecycle/gunicorn.conf.py"
 	pidDir       string = ""
@@ -97,6 +98,17 @@ func (g *GoUnicorn) initCmd() {
 				"--proxy-headers", "authentik.root.asgi:application",
 			}
 			// daphne has no pidfile support
+		case "granian":
+			command = granianCmd
+			// TODO: could also serve static files with granian
+			args = []string{
+				"--interface", "asgi",
+				"--loop", "uvloop",
+				"--metrics",
+				"--uds", socketPath,
+				// leave worker restarting and scaling to Kubernetes
+				"authentik.root.asgi:application",
+			}
 		case "uvicorn":
 			command = uvicornCmd
 			// workers=2 to prevent the worker pool to be empty when recycling workers
