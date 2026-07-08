@@ -554,7 +554,8 @@ def _update_settings(app_path: str) -> None:
         pass
 
 
-TENANT_APPS.insert(TENANT_APPS.index("authentik.events"), "authentik.suse.ldap")
+for app in ["authentik.suse.ldap", "authentik.suse.provider"]:
+    TENANT_APPS.insert(TENANT_APPS.index("authentik.events"), app)
 
 
 if DEBUG:

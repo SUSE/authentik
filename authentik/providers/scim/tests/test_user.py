@@ -1,5 +1,5 @@
 """SCIM User tests"""
-
+import datetime
 from json import loads
 
 from django.test import TestCase
@@ -12,9 +12,12 @@ from authentik.lib.generators import generate_id
 from authentik.lib.sync.outgoing.base import SAFE_METHODS
 from authentik.providers.scim.clients.schema import ServiceProviderConfiguration
 from authentik.providers.scim.models import SCIMMapping, SCIMProvider, SCIMProviderUser
-from authentik.providers.scim.tasks import scim_sync, scim_sync_objects
+from authentik.providers.scim.tasks import scim_sync, scim_sync_objects, sync_tasks
+from authentik.suse.provider.models import SUSEProviderSyncState
 from authentik.tasks.models import Task
 from authentik.tenants.models import Tenant
+from dramatiq.composition import group
+from freezegun import freeze_time
 
 
 class SCIMUserTests(TestCase):
@@ -397,6 +400,80 @@ class SCIMUserTests(TestCase):
                 "userName": uid,
             },
         )
+
+    @Mocker()
+    def test_sync_task(self, mock: Mocker):
+        """Test sync tasks"""
+        user_scim_id = generate_id()
+        group_scim_id = generate_id()
+        uid = generate_id()
+        mock.get(
+            "https://localhost/ServiceProviderConfig",
+            json={},
+        )
+        mock.post(
+            "https://localhost/Users",
+            json={
+                "id": user_scim_id,
+            },
+        )
+        mock.put(
+            f"https://localhost/Users/{user_scim_id}",
+            json={
+                "id": user_scim_id,
+            },
+        )
+        mock.post(
+            "https://localhost/Groups",
+            json={
+                "id": group_scim_id,
+            },
+        )
+
+        initial_datetime = datetime.datetime(
+            year=2000,
+            month=7,
+            day=12,
+            hour=15,
+            minute=6,
+            second=3,
+            tzinfo=datetime.timezone(offset=datetime.timedelta(hours=2)),
+        )
+
+        with freeze_time(initial_datetime) as frozen_datetime:
+            user = User.objects.create(
+                username=uid,
+                name=f"{uid} {uid}",
+                email=f"{uid}@goauthentik.io",
+            )
+
+            frozen_datetime.tick()
+
+            pages = self.provider.get_paginator(User)
+            self.assertEqual(pages.count, 1, "Expect single page")
+            self.assertEqual(pages.get_page(0).object_list.count(), 1, "Expect one user in first page")
+
+            sync_state = SUSEProviderSyncState.objects.filter(
+                provider_id=self.provider.pk
+            ).first()
+            self.assertFalse(sync_state, "sync_state should not exist")
+
+
+            scim_sync.send(self.provider.pk)
+
+            sync_state = SUSEProviderSyncState.objects.filter(
+                provider_id=self.provider.pk
+            ).first()
+
+            self.assertTrue(sync_state, "sync_state should exist")
+            self.assertEqual(
+                sync_state.last_modify_timestamp,
+                datetime.datetime(2000, 7, 12, 13, 6, 4, tzinfo=datetime.UTC),
+            )
+
+            pages = self.provider.get_paginator(User)
+            self.assertEqual(pages.count, 0, "Expect no page after initial sync")
+
 
     def test_user_create_dry_run(self):
         """Test user creation (dry_run)"""

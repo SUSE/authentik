@@ -11,6 +11,7 @@ from dramatiq.actor import Actor
 from authentik.core.models import Group, User
 from authentik.lib.sync.outgoing.base import BaseOutgoingSyncClient
 from authentik.lib.utils.time import fqdn_rand, timedelta_from_string, timedelta_string_validator
+from authentik.suse.provider.models import SUSEProviderSyncState
 from authentik.tasks.schedules.common import ScheduleSpec
 from authentik.tasks.schedules.models import ScheduledModel
 
@@ -65,7 +66,14 @@ class OutgoingSyncProvider(ScheduledModel, Model):
         raise NotImplementedError
 
     def get_paginator[T: User | Group](self, type: type[T]) -> Paginator:
-        return Paginator(self.get_object_qs(type), self.sync_page_size)
+        qs = self.get_object_qs(type)
+        sync_state = SUSEProviderSyncState.objects.filter(provider_id=self.pk).first()
+        # Apply the filter only on paginated results. Otherwise, we block manual sync of individual users too.
+        # Only filter for users. Groups don't have a last_updated field.
+        if type == User and sync_state:
+            qs = qs.filter(last_updated__gte=sync_state.last_modify_timestamp)
+
+        return Paginator(qs, self.sync_page_size)
 
     def get_object_sync_time_limit_ms[T: User | Group](self, type: type[T]) -> int:
         num_pages: int = self.get_paginator(type).num_pages
