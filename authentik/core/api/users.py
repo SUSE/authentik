@@ -153,6 +153,10 @@ class UserSerializer(ModelSerializer):
     def validate_email(self, email: str) -> str:
         """Validate email for all user types."""
 
+        # Blueprints can do anything and are not limited.
+        if SERIALIZER_CONTEXT_BLUEPRINT in self.context:
+            return email
+
         # always allow user updates in which the email field is not changed,
         # and skip unnecessary processing in case of an empty email field
         if (self.instance and self.instance.email == email) or not email:
