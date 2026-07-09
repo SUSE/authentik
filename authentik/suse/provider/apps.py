@@ -1,16 +1,8 @@
-from django.apps import AppConfig
-
-from authentik.tasks.schedules.common import ScheduleSpec
+from authentik.blueprints.apps import ManagedAppConfig
 
 
-class SCIMProviderStateConfig(AppConfig):
-    default_auto_field = "django.db.models.BigAutoField"
+class SUSEProviderSyncState(ManagedAppConfig):
     name = "authentik.suse.provider"
-
-    @property
-    def tenant_schedule_specs(self) -> list[ScheduleSpec]:
-        return []
-
-    @property
-    def global_schedule_specs(self) -> list[ScheduleSpec]:
-        return []
+    label = "authentik_suse_provider"
+    verbose_name = "SUSE Provider State"
+    default = True
