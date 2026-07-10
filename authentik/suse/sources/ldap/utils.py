@@ -1,6 +1,6 @@
 from datetime import UTC
 
-from authentik.suse.ldap.models import SUSELdapSourceSyncState
+from authentik.suse.sources.ldap.models import SUSELdapSourceSyncState
 
 
 def suse_get_ldap_filter(provider_pk: str, ldap_filter: str | None) -> str:

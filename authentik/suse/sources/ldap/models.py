@@ -10,7 +10,7 @@ class SUSELdapSourceSyncState(models.Model):
     last_modify_timestamp = models.DateTimeField("Last processed modify timestamp in LDAP")
 
     class Meta:
-        db_table = "suse_ldapsyncstate"
+        db_table = "suse_source_ldap_state"
 
     def __str__(self):
         return f"{self.ldap_source_id} ({self.last_modify_timestamp})"

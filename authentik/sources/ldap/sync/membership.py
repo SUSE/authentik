@@ -10,7 +10,7 @@ from ldap3.utils.conv import escape_filter_chars
 from authentik.core.models import Group, User
 from authentik.sources.ldap.models import LDAP_DISTINGUISHED_NAME, LDAP_UNIQUENESS, LDAPSource
 from authentik.sources.ldap.sync.base import BaseLDAPSynchronizer
-from authentik.suse.ldap.utils import suse_get_ldap_filter
+from authentik.suse.sources.ldap.utils import suse_get_ldap_filter
 from authentik.tasks.models import Task
 
 
