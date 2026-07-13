@@ -113,10 +113,9 @@ func (g *GoUnicorn) initCmd() {
 			command = uvicornCmd
 			// workers=2 to prevent the worker pool to be empty when recycling workers
 			args = []string{
-				"--uds", socketPath, "--workers", "2", "--lifespan", "off",
+				"--uds", socketPath, "--lifespan", "off",
 				"--no-server-header", "--proxy-headers",
-				"--interface", "asgi3", "--limit-max-requests", "1000",
-				"authentik.root.asgi:application",
+				"--interface", "asgi3", "authentik.root.asgi:application",
 			}
 			// uvicorn has no pidfile support
 		default:
