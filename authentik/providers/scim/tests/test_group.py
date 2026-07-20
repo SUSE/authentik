@@ -376,7 +376,6 @@ class SCIMGroupTests(TestCase):
                         "value": {
                             "displayName": group.name,
                             "externalId": str(group.pk),
-                            "id": scim_id,
                             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
                         },
                     }

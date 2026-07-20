@@ -344,7 +344,6 @@ class SCIMMembershipTests(TestCase):
                             "op": "replace",
                             "path": None,
                             "value": {
-                                "id": group_scim_id,
                                 "displayName": group.name,
                                 "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
                                 "externalId": str(group.pk),
