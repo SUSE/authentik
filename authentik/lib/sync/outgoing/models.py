@@ -1,3 +1,4 @@
+import os
 from typing import Any, Self
 
 import pglock
@@ -70,7 +71,7 @@ class OutgoingSyncProvider(ScheduledModel, Model):
         sync_state = SUSEProviderSyncState.objects.filter(provider_id=self.pk).first()
         # Apply the filter only on paginated results. Otherwise, we block manual sync of individual users too.
         # Only filter for users. Groups don't have a last_updated field.
-        if type == User and sync_state:
+        if type == User and sync_state and os.getenv(f"SUSE_PROVIDER_{self.pk}_INCREMENTAL_SYNC", "false").lower() == "true":
             qs = qs.filter(last_updated__gte=sync_state.last_modify_timestamp)
 
         return Paginator(qs, self.sync_page_size)

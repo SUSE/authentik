@@ -1,5 +1,6 @@
 """SCIM User tests"""
 import datetime
+import os
 from json import loads
 
 from django.test import TestCase
@@ -47,6 +48,8 @@ class SCIMUserTests(TestCase):
         self.provider.property_mappings_group.add(
             SCIMMapping.objects.get(managed="goauthentik.io/providers/scim/group")
         )
+
+        os.environ.setdefault(f"SUSE_PROVIDER_{self.provider.pk}_INCREMENTAL_SYNC", "true")
 
     @Mocker()
     def test_user_create(self, mock: Mocker):
