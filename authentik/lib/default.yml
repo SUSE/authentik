@@ -22,7 +22,7 @@ postgresql:
   port: 5432
   password: "env://POSTGRES_PASSWORD"
   sslmode: disable
-  use_pool: False
+  use_pool: true
   test:
     name: test_authentik
   default_schema: public
