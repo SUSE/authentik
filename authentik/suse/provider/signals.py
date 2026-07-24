@@ -10,7 +10,7 @@ def update_user_modified_at(user_pk):
 
 
 def model_m2m_changed(sender, instance, action, pk_set, reverse, **kwargs):
-    if not settings.UPDATE_USER_AFTER_GROUP_ADD_REMOVE:
+    if not settings.UPDATE_USER_AFTER_GROUP_MEMBERSHIP_CHANGE:
         return
 
     # keep the same behavior as lib.sync.outgoing.signals.py
