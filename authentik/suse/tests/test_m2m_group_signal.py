@@ -19,7 +19,7 @@ class TestM2MGroupSignal(APITestCase):
         self.user.save()  # bump last_updated
         self.group = Group.objects.create(name=f"test-group-{self.user.name}", is_superuser=True)
 
-    @override_settings(UPDATE_USER_AFTER_GROUP_ADD_REMOVE=True)
+    @override_settings(UPDATE_USER_AFTER_GROUP_MEMBERSHIP_CHANGE=True)
     def test_add_user_to_group_way(self):
         before = self.user.last_updated
         self.group.users.add(self.user)
@@ -28,7 +28,7 @@ class TestM2MGroupSignal(APITestCase):
         after = self.user.last_updated
         assert before < after, "timestamp did not change"
 
-    @override_settings(UPDATE_USER_AFTER_GROUP_ADD_REMOVE=True)
+    @override_settings(UPDATE_USER_AFTER_GROUP_MEMBERSHIP_CHANGE=True)
     def test_add_group_to_user_way(self):
         before = self.user.last_updated
         self.user.ak_groups.add(self.group)
