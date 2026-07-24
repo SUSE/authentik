@@ -228,9 +228,7 @@ REST_FRAMEWORK = {
         orjson.OPT_NON_STR_KEYS,
         orjson.OPT_UTC_Z,
     ],
-    "DEFAULT_PARSER_CLASSES": [
-        "drf_orjson_renderer.parsers.ORJSONParser",
-    ],
+    "DEFAULT_PARSER_CLASSES": ["drf_orjson_renderer.parsers.ORJSONParser"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle"],
