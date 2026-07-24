@@ -72,3 +72,12 @@ for role, acls in CONFIG.get_dict_from_b64_json("suse.constraints.email", {}).it
     CONSTRAINTS["email"]["roles_domains"][role] = acls
 
 CONFIG.log("info", f"Loaded CONSTRAINTS={CONSTRAINTS}")
+
+UPDATE_USER_AFTER_GROUP_MEMBERSHIP_CHANGE = CONFIG.get_bool(
+    "suse.update_user_after_group_membership_change", False
+)
+
+CONFIG.log(
+    "info",
+    f"Loaded UPDATE_USER_AFTER_GROUP_MEMBERSHIP_CHANGE={UPDATE_USER_AFTER_GROUP_MEMBERSHIP_CHANGE}",
+)

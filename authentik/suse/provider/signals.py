@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models.signals import m2m_changed
 
 from authentik.core.models import User
@@ -9,6 +10,9 @@ def update_user_modified_at(user_pk):
 
 
 def model_m2m_changed(sender, instance, action, pk_set, reverse, **kwargs):
+    if not settings.UPDATE_USER_AFTER_GROUP_ADD_REMOVE:
+        return
+
     # keep the same behavior as lib.sync.outgoing.signals.py
     if action not in ["post_add", "post_remove"]:
         return
