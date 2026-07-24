@@ -31,7 +31,7 @@ from authentik.policies.types import PolicyRequest
 # Special keys which are *not* cleaned, even when the default filter
 # is matched
 ALLOWED_SPECIAL_KEYS = re.compile(
-    r"passing|password_change_date|^auth_method(_args)?$",
+    r"wauth|passing|password_change_date|^auth_method(_args)?$",
     flags=re.I,
 )
 
