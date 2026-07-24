@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="us-ascii"?>
+<!DOCTYPE xs:schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "http://www.w3.org/2001/XMLSchema.dtd">
+<xs:schema attributeFormDefault="unqualified" blockDefault="" elementFormDefault="qualified" finalDefault="" targetNamespace="http://www.w3.org/2003/06/wsdl" xmlns:wsdl="http://www.w3.org/2003/06/wsdl" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element abstract="true" name="globalExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as a child 
+    of any element in wsdl that has complex content
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="msgAndinterfaceExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as a child 
+    of wsdl:message and/or wsdl:interface
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="msginterfaceAndBindingExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as a child 
+    of wsdl:message, wsdl:interface and/or wsdl:binding
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="msginterfaceBindingServiceExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as a child 
+    of wsdl:message, wsdl:interface, wsdl:binding and/or wsdl:service
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="bindingAndServiceExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as a child 
+    of wsdl:binding and/or wsdl:service
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="preImportInclude">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear before the wsdl:import/wsdl:include elements
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="inImportInclude">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear interleaved with the wsdl:import/wsdl:include elements
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="preTypes">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear after the wsdl:import/wsdl:include elements 
+    but before the wsdl:types element
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="postTypes">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear after the wsdl:types element 
+    ( potentially interleaved with wsdl:message/interface/binding/service
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="msgExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:message
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="msgPrePartExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:message before wsdl:part
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="msgPostPartExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:message after wsdl:part
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="msgPartExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:message/wsdl:part
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="interfaceExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:interface
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="interfacePreOpExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:interface before wsdl:operation
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="interfacePostOpExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:interface after wsdl:operation
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="interfaceOpExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:interface/wsdl:operation
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="interfaceOpMsgExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of 
+    wsdl:interface/wsdl:operation/wsdl:input\output
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="interfaceOpFaultExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of 
+    wsdl:interface/wsdl:operation/wsdl:fault
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="featureExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:feature
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="propertyExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:property
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="bindingExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:binding
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="bindingPreOpExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:binding before wsdl:operation
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="bindingPostOpExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:binding after wsdl:operation
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="bindingOpExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:binding/wsdl:operation
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="bindingOpMsgExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:binding/wsdl:operation/wsdl:input/output
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="bindingOpFaultExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:binding/wsdl:operation/wsdl:fault
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="serviceExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:service
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="servicePreEndpointExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:service before wsdl:endpoint
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="servicePostEndpointExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:service after wsdl:endpoint
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  <xs:element abstract="true" name="endpointExt">
+    <xs:annotation>
+      <xs:documentation>
+    This element serves as the head of a substitution group 
+    for extensibility elements that wish to appear as children of wsdl:endpoint
+    </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>
