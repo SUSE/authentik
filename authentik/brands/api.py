@@ -130,6 +130,9 @@ class CurrentBrandSerializer(PassiveSerializer):
                 values[_flag.key] = _flag.get()
         return values
 
+    def get_custom_banners(self, brand):
+        return brand.attributes.get("banners", {})
+
     def to_representation(self, brand):
         data = super().to_representation(brand)
         request = self.context.get("request")

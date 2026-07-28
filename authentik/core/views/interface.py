@@ -46,6 +46,7 @@ class InterfaceView(TemplateView):
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         brand = CurrentBrandSerializer(self.request.brand, context={"request": self.request})
+        kwargs["custom_banners"] = dumps(brand.get_custom_banners(self.request.brand))
         kwargs["config_json"] = dumps(ConfigView.get_config(self.request).data)
         kwargs["ui_theme"] = brand.data["ui_theme"]
         kwargs["brand_json"] = dumps(brand.data)
