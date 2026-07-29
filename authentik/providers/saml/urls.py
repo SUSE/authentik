@@ -9,6 +9,10 @@ from authentik.providers.saml.views.sp_slo import (
     SPInitiatedSLOBindingPOSTView,
     SPInitiatedSLOBindingRedirectView,
 )
+from authentik.suse.wsfed.views.active import WSFedActiveView
+from authentik.suse.wsfed.views.metadata import MetadataDownloadView as WSFedMetadataDownloadView
+from authentik.suse.wsfed.views.passive import WSFedPassiveView
+from authentik.suse.wsfed.views.sign_out import WSFedSignOutView
 
 urlpatterns = [
     # SSO Bindings
@@ -46,6 +50,32 @@ urlpatterns = [
         name="metadata-download",
     ),
 ]
+
+# WSFed urlpatterns
+wsfed_urlpatterns = [
+    path(
+        "<slug:application_slug>/wsfed-suse/active/",
+        WSFedActiveView.as_view(),
+        name="wsfed-active",
+    ),
+    path(
+        "<slug:application_slug>/wsfed-suse/passive/",
+        WSFedPassiveView.as_view(),
+        name="wsfed-passive",
+    ),
+    path(
+        "<slug:application_slug>/wsfed-suse/sign-out/",
+        WSFedSignOutView.as_view(),
+        name="wsfed-sign-out",
+    ),
+    path(
+        "<slug:application_slug>/wsfed-suse/mex/",
+        WSFedMetadataDownloadView.as_view(),
+        name="wsfed-mex",
+    ),
+]
+
+urlpatterns += wsfed_urlpatterns
 
 api_urlpatterns = [
     ("propertymappings/provider/saml", SAMLPropertyMappingViewSet),

@@ -252,19 +252,15 @@ class AutosubmitStage extends Stage<AutosubmitChallenge> {
             <form id="autosubmit-form" action="${this.challenge.url}" method="POST">
                 <img class="mb-4 brand-icon" src="${ak().brand.branding_logo}" alt="">
                 <h1 class="h3 mb-3 fw-normal text-center">${this.challenge?.flowInfo?.title}</h1>
-                ${Object.entries(this.challenge.attrs).map(([key, value]) => {
-                    return `<input
-                            type="hidden"
-                            name="${key}"
-                            value="${value}"
-                        />`;
-                })}
                 <div class="d-flex justify-content-center">
                     <div class="spinner-border" role="status">
                         <span class="sr-only">Loading...</span>
                     </div>
                 </div>
             </form>`);
+        Object.entries(this.challenge.attrs).map(([key, value]) => {
+            $("<input>", {name: key, type: "hidden"}).val(value).appendTo("#autosubmit-form")
+        })
         $("#autosubmit-form").submit();
     }
 }
