@@ -4,6 +4,8 @@
 <script data-id="authentik-config">
     "use strict";
 
+    window.custom_banners = JSON.parse("{{ custom_banners | escapejs }}" || "{}")
+
     window.authentik = {
         locale: "{{ LANGUAGE_CODE }}",
         config: JSON.parse('{{ config_json|escapejs }}' || "{}"),

@@ -4,6 +4,8 @@ import "#flow/components/ak-flow-card";
 import "#flow/components/ak-flow-password-input";
 import "#flow/stages/captcha/CaptchaStage";
 
+import "#flow/components/suse-ak-banner";
+
 import {
     isConditionalMediationAvailable,
     transformAssertionForServer,
@@ -504,6 +506,9 @@ export class IdentificationStage extends BaseStage<
     render(): TemplateResult {
         return html`<ak-flow-card .challenge=${this.challenge} part="flow-card">
             <form class="pf-c-form" @submit=${this.submitForm}>
+
+                <suse-ak-banner .recoveryUrl=${this.challenge?.recoveryUrl}></suse-ak-banner>
+
                 ${this.challenge?.applicationPre
                     ? html`<p>
                           ${msg(str`Login to continue to ${this.challenge.applicationPre}.`)}
