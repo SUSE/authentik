@@ -33,6 +33,14 @@ export class Banner extends AKElement {
             return;
         }
 
+        if (banner.flows) {
+            // use same logic as flowSlug in FlowExecutor
+            const flow = window.location.pathname.split("/")[3];
+            if (!flow || !banner.flows.includes(flow)) {
+                return;
+            }
+        }
+
         this.bannerType = banner.type || "info";
 
         this.bannerLines = (banner.lines || [])
