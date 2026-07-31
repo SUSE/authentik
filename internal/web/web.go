@@ -91,6 +91,7 @@ func NewWebServer() *WebServer {
 		upstreamURL:    u,
 	}
 	ws.configureStatic()
+	ws.configureIntercept()
 	ws.configureProxy()
 	// Redirect for sub-folder
 	if sp := config.Get().Web.Path; sp != "/" {
