@@ -275,6 +275,25 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
                 json=req.model_dump(mode="json", exclude_none=True),
             )
 
+    def _make_delete_op(self, scim_id):
+        match self.provider.compatibility_mode:
+            case SCIMCompatibilityMode.AWS:
+                return PatchOperation(
+                    op=PatchOp.remove,
+                    path=f'members',
+                    value=[
+                        GroupMember(value=scim_id).model_dump(
+                            mode="json",
+                            exclude_unset=True,
+                        )
+                    ]
+                )
+            case _:
+                return PatchOperation(
+                    op=PatchOp.remove,
+                    path=f'members[value eq "{scim_id}"]',
+                )
+
     @transaction.atomic
     def patch_compare_users(self, group: Group):
         """Compare users with a SCIM group and add/remove any differences"""
@@ -331,19 +350,7 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
                 )
                 for x in users_to_add
             ],
-            *[
-                PatchOperation(
-                    op=PatchOp.remove,
-                    path="members",
-                    value=[
-                        GroupMember(value=x).model_dump(
-                            mode="json",
-                            exclude_unset=True,
-                        )
-                    ],
-                )
-                for x in users_to_remove
-            ],
+            *[self._make_delete_op(x) for x in users_to_remove],
         )
 
     def _patch_add_users(self, scim_group: SCIMProviderGroup, users_set: set[int]):
@@ -387,11 +394,5 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
             return
         self._patch_chunked(
             scim_group.scim_id,
-            *[
-                PatchOperation(
-                    op=PatchOp.remove,
-                    path=f'members[value eq "{x}"]',
-                )
-                for x in user_ids
-            ],
+            *[self._make_delete_op(x) for x in user_ids],
         )

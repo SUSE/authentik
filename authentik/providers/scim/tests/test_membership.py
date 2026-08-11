@@ -618,7 +618,7 @@ class SCIMMembershipTests(TestCase):
             group.name = "newname" + group.name
             group.save()
 
-            self.assertEqual(mocker.call_count, 3)
+            self.assertEqual(mocker.call_count, 4)
             self.assertEqual(mocker.request_history[0].method, "PATCH")
             self.assertEqual(mocker.request_history[0].path, f"/Groups/{group_scim_id}")
             self.assertJSONEqual(
