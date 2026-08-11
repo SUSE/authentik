@@ -1,6 +1,7 @@
 """User client"""
 
 from copy import deepcopy
+from itertools import batched
 from typing import Any
 
 from django.db import transaction
@@ -23,7 +24,7 @@ from authentik.providers.scim.clients.schema import (
 from authentik.providers.scim.clients.schema import (
     User as SCIMUserSchema,
 )
-from authentik.providers.scim.models import SCIMMapping, SCIMProvider, SCIMProviderUser
+from authentik.providers.scim.models import (SCIMMapping, SCIMProvider, SCIMProviderUser, SCIMCompatibilityMode)
 
 
 class SCIMUserClient(SCIMClient[User, SCIMProviderUser, SCIMUserSchema]):
@@ -117,10 +118,15 @@ class SCIMUserClient(SCIMClient[User, SCIMProviderUser, SCIMUserSchema]):
         )
         if not self.diff(payload, connection):
             self.logger.debug("Skipping user write as data has not changed")
-            return connection.attributes
+            return
 
         if self._config.patch.supported:
-            response = self._update_patch(payload, connection)
+            match connection.provider.compatibility_mode:
+                case SCIMCompatibilityMode.AWS:
+                    self._update_patch_aws(payload, connection)
+                case _:
+                    self._update_patch(payload, connection)
+            response = self._request("GET", f"/Users/{connection.scim_id}")
         else:
             response = self._update_put(payload, connection)
 
@@ -129,19 +135,65 @@ class SCIMUserClient(SCIMClient[User, SCIMProviderUser, SCIMUserSchema]):
 
     def _update_patch(self, payload, connection):
         """Update existing user using PATCH (replace)"""
-        return self._request(
-            "PATCH",
-            f"/Users/{connection.scim_id}",
-            json=PatchRequest(
-                Operations=[
-                    PatchOperation(
-                        op=PatchOp.replace,
-                        path=None,
-                        value=payload,
-                    )
-                ]
-            ).model_dump(mode="json"),
+        op = PatchOperation(
+            op=PatchOp.replace,
+            path=None,
+            value=payload,
         )
+        return self._patch_chunked(connection.scim_id, op)
+
+    def _patch_chunked(
+        self,
+        group_id: str,
+        *ops: PatchOperation,
+    ):
+        """Helper function that chunks patch requests based on the maxOperations attribute.
+        This is not strictly according to specs but there's nothing in the schema that allows the
+        us to know what the maximum patch operations per request should be."""
+        chunk_size = self._config.bulk.maxOperations
+        if chunk_size < 1:
+            chunk_size = len(ops)
+        if len(ops) < 1:
+            return
+
+        for chunk in batched(ops, chunk_size, strict=False):
+            req = PatchRequest(Operations=list(chunk))
+            self._request(
+                "PATCH",
+                f"/Users/{group_id}",
+                json=req.model_dump(mode="json", exclude_none=True),
+            )
+
+    def _update_patch_aws(self, payload, connection):
+        # from: https://docs.aws.amazon.com/singlesignon/latest/developerguide/patchuser.html
+        supported_fields = (
+            "userName", "active", "externalId", "displayName", "nickName",
+            "profileUrl", "title", "userType", "preferredLanguage", "locale",
+            "timezone", "name", "enterprise", "emails", "addresses",
+            "phoneNumbers",
+        )
+
+        user_dict = scim_group.model_dump(mode="json", exclude_unset=True)
+        patch_ops = []
+
+        for attr in supported_fields:
+            op = PatchOp.replace
+            if attr not in connection.attributes:
+                if attr not in payload:
+                    # skip
+                    continue
+
+                op = PatchOp.add
+
+            patch_ops.append(
+                PatchOperation(
+                    op=op,
+                    path=attr,
+                    value=payload[attr],
+                )
+            )
+
+        self._patch_chunked(connection.scim_id, *patch_ops)
 
     def _update_put(self, payload, connection):
         """Update existing user using PUT"""

@@ -671,6 +671,12 @@ class SCIMUserTests(TestCase):
                 "id": scim_id,
             },
         )
+        mock.get(
+            f"https://localhost/Users/{scim_id}",
+            json={
+                "id": scim_id,
+            },
+        )
         uid = generate_id()
         user = User.objects.create(
             username=uid,
@@ -713,9 +719,11 @@ class SCIMUserTests(TestCase):
         user.is_active = False
         user.save()
 
-        self.assertEqual(mock.call_count, 3)
+        self.assertEqual(mock.call_count, 4)
         self.assertEqual(mock.request_history[2].method, "PATCH")
         self.assertEqual(mock.request_history[2].path, f"/Users/{scim_id}")
+        self.assertEqual(mock.request_history[3].method, "GET")
+        self.assertEqual(mock.request_history[3].path, f"/Users/{scim_id}")
 
         scim_user = self.provider.client_for_model(User).to_schema(user, None)
         scim_user.id = scim_id
@@ -731,7 +739,6 @@ class SCIMUserTests(TestCase):
                 "Operations": [
                     {
                         "op": "replace",
-                        "path": None,
                         "value": payload,
                     }
                 ],
