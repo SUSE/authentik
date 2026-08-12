@@ -9,8 +9,8 @@ from requests_mock import Mocker
 from authentik.blueprints.tests import apply_blueprint
 from authentik.core.models import Application, Group, User
 from authentik.lib.generators import generate_id
-from authentik.providers.scim.clients.schema import ServiceProviderConfiguration
 from authentik.providers.scim.clients.groups import SCIMGroupClient
+from authentik.providers.scim.clients.schema import ServiceProviderConfiguration
 from authentik.providers.scim.models import SCIMMapping, SCIMProvider, SCIMProviderGroup
 
 

@@ -24,7 +24,12 @@ from authentik.providers.scim.clients.schema import (
 from authentik.providers.scim.clients.schema import (
     User as SCIMUserSchema,
 )
-from authentik.providers.scim.models import (SCIMMapping, SCIMProvider, SCIMProviderUser, SCIMCompatibilityMode)
+from authentik.providers.scim.models import (
+    SCIMCompatibilityMode,
+    SCIMMapping,
+    SCIMProvider,
+    SCIMProviderUser,
+)
 
 
 class SCIMUserClient(SCIMClient[User, SCIMProviderUser, SCIMUserSchema]):
@@ -167,13 +172,24 @@ class SCIMUserClient(SCIMClient[User, SCIMProviderUser, SCIMUserSchema]):
     def _update_patch_aws(self, payload, connection):
         # from: https://docs.aws.amazon.com/singlesignon/latest/developerguide/patchuser.html
         supported_fields = (
-            "userName", "active", "externalId", "displayName", "nickName",
-            "profileUrl", "title", "userType", "preferredLanguage", "locale",
-            "timezone", "name", "enterprise", "emails", "addresses",
+            "userName",
+            "active",
+            "externalId",
+            "displayName",
+            "nickName",
+            "profileUrl",
+            "title",
+            "userType",
+            "preferredLanguage",
+            "locale",
+            "timezone",
+            "name",
+            "enterprise",
+            "emails",
+            "addresses",
             "phoneNumbers",
         )
 
-        user_dict = scim_group.model_dump(mode="json", exclude_unset=True)
         patch_ops = []
 
         for attr in supported_fields:

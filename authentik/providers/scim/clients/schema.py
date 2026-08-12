@@ -6,7 +6,8 @@ from typing import Self
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field, model_validator
-from pydanticscim.group import Group as BaseGroup, GroupMember as BaseGroupMember
+from pydanticscim.group import Group as BaseGroup
+from pydanticscim.group import GroupMember as BaseGroupMember
 from pydanticscim.responses import PatchOperation as BasePatchOperation
 from pydanticscim.responses import PatchRequest as BasePatchRequest
 from pydanticscim.responses import SCIMError as BaseSCIMError

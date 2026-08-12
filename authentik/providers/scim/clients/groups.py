@@ -280,13 +280,13 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
             case SCIMCompatibilityMode.AWS:
                 return PatchOperation(
                     op=PatchOp.remove,
-                    path=f'members',
+                    path="members",
                     value=[
                         GroupMember(value=scim_id).model_dump(
                             mode="json",
                             exclude_unset=True,
                         )
-                    ]
+                    ],
                 )
             case _:
                 return PatchOperation(
