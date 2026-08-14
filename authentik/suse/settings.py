@@ -81,3 +81,12 @@ CONFIG.log(
     "info",
     f"Loaded UPDATE_USER_AFTER_GROUP_MEMBERSHIP_CHANGE={UPDATE_USER_AFTER_GROUP_MEMBERSHIP_CHANGE}",
 )
+
+# Key   = endpoint name: 'core_applications_check_access_retrieve'
+# Value = True -> Use SUSE version, False -> Use upstream version
+known_endpoints = ("core_applications_check_access_retrieve",)
+
+OVERRIDE_ENDPOINT: dict[str, bool] = {
+    endpoint_name: CONFIG.get_bool(f"suse.override_endpoint.{endpoint_name}", False)
+    for endpoint_name in known_endpoints
+}
