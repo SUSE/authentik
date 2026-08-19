@@ -12,7 +12,7 @@ from authentik.policies.dummy.models import DummyPolicy
 from authentik.policies.models import PolicyBinding
 
 
-class TestUserEmailValidation(APITestCase):
+class TestApplicationAccessCheck(APITestCase):
     """Test User Email Validation API based on dynamic configuration"""
 
     def setUp(self) -> None:
@@ -42,7 +42,9 @@ class TestUserEmailValidation(APITestCase):
                 query=dict(for_user=self.user.pk),
             )
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
+        body = loads(response.content.decode())
+        self.assertEqual(body["passing"], False)
 
     @override_settings(OVERRIDE_ENDPOINT=dict(core_applications_check_access_retrieve=True))
     def test_check_access_no_superuser_with_permission(self):
@@ -94,7 +96,10 @@ class TestUserEmailValidation(APITestCase):
                 query=dict(for_user=another_user.pk),
             )
         )
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 200)
+        body = loads(response.content.decode())
+        self.assertEqual(body["passing"], False)
+
         response = self.client.get(
             reverse(
                 "authentik_api:application-check-access",
@@ -102,4 +107,6 @@ class TestUserEmailValidation(APITestCase):
                 query=dict(for_user=another_user.pk),
             )
         )
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 200)
+        body = loads(response.content.decode())
+        self.assertEqual(body["passing"], False)
