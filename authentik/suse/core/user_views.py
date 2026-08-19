@@ -1,5 +1,6 @@
 """User API Views"""
 
+from deepmerge import always_merger
 from django.conf import settings
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.models import AnonymousUser
@@ -49,6 +50,33 @@ def first(iter):
 
 
 class UserViewSet(BaseUserViewSet):
+    def _get_merged_attributes(self, request):
+        instance = self.get_object()
+        # We start with the current user attributes
+        final_attributes = instance.attributes
+        # merge the provided attributes
+        always_merger.merge(final_attributes, request.data.get("attributes", {}))
+        # re-assign it
+        return final_attributes
+
+    def _merge_or_replace_attributes(self, request):
+        wants_to_replace = request.GET.get("replace_attributes") == "true"
+        if not wants_to_replace:
+            request.data["attributes"] = self._get_merged_attributes(request)
+
+    def update(self, request, *args, **kwargs):
+        # Within DRF #partial_update() calls #update() internally with partial=True in kwargs
+        is_patch = kwargs.get("partial", False)
+        put_overridden = settings.OVERRIDE_ENDPOINT.get("core_users_update")
+        patch_overridden = settings.OVERRIDE_ENDPOINT.get("core_users_partial_update")
+
+        if is_patch and patch_overridden:
+            self._merge_or_replace_attributes(request)
+        elif not (is_patch) and put_overridden:
+            self._merge_or_replace_attributes(request)
+
+        return super().update(request, *args, **kwargs)
+
     def _create_recovery_link(self, for_email=False, user=None) -> tuple[str, Token]:
         # Same source as authentik/core/api/users#UserViewSet._create_recovery_link
         # but user can be passed to skip the get_object() call
