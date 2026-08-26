@@ -28,44 +28,7 @@ def get_objects_for_user(  # noqa: PLR0912 PLR0915
     perms: str | list[str],
     queryset: QuerySet | None = None,
 ) -> QuerySet:
-    """Get objects that a user has *all* the supplied permissions for.
-
-    Parameters:
-        user (User | AnonymousUser): user to check for permissions.
-        perms (str | list[str]): permission(s) to be checked.
-            These should be full permission names rather than only codenames
-            (i.e. `auth.change_user`).
-            If more than one permission is present within sequence, their content type **must** be
-            the same or `MixedContentTypeError` exception would be raised.
-        queryset (QuerySet): a queryset from which to filter objects.
-            If not present, the base queryset will just be all objects for the given `perms`.
-
-    Raises:
-        MixedContentTypeError: when computed content type for `perms` clashes.
-
-    Example:
-        ```shell
-        >>> from django.contrib.auth.models import User
-        >>> from guardian.shortcuts import get_objects_for_user
-        >>> joe = User.objects.get(username='joe')
-        >>> get_objects_for_user(joe, 'auth.change_group')
-        []
-        >>> from guardian.shortcuts import assign_perm
-        >>> group = Group.objects.create('some group')
-        >>> assign_perm('auth.change_group', joe, group)
-        >>> get_objects_for_user(joe, 'auth.change_group')
-        [<Group some group>]
-
-        # The permission string can also be an iterable. Continuing with the previous example:
-
-        >>> get_objects_for_user(joe, ['auth.change_group', 'auth.delete_group'])
-        []
-        >>> get_objects_for_user(joe, ['auth.change_group', 'auth.delete_group'], any_perm=True)
-        [<Group some group>]
-        >>> assign_perm('auth.delete_group', joe, group)
-        >>> get_objects_for_user(joe, ['auth.change_group', 'auth.delete_group'])
-        [<Group some group>]
-    """
+    """Get objects that a user has *all* + descendant models the supplied permissions for."""
     if isinstance(perms, str):
         perms = [perms]
     ctype = None

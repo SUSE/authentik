@@ -38,7 +38,7 @@ class TestRBACGroupDescendants(APITestCase):
 
     @override_settings(USE_CUSTOM_GUARDIAN=True)
     def test_permission_on_parent(self):
-        """Check that an unauthorized user can't use the for_user param"""
+        """Baseline assert: permission granted to the parent, action performed upon parent"""
         self.client.force_login(self.user)
         response = self.client.get(
             reverse(
@@ -50,7 +50,7 @@ class TestRBACGroupDescendants(APITestCase):
 
     @override_settings(USE_CUSTOM_GUARDIAN=True)
     def test_permission_on_child(self):
-        """Check that an unauthorized user can't use the for_user param"""
+        """New behavior: permission granted to the parent, action performed upon child"""
         self.client.force_login(self.user)
         response = self.client.get(
             reverse(
