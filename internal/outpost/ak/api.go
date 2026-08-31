@@ -143,11 +143,19 @@ func (a *APIController) IsEmbedded() bool {
 	return false
 }
 
+func useSUSESearcher() bool {
+	return os.Getenv("SUSE_DO_NOT_REFRESH_ON_BOOT") == "true"
+}
+
 // Start Starts all handlers, non-blocking
 func (a *APIController) Start() error {
-	err := a.Server.Refresh()
-	if err != nil {
-		return err
+	if !useSUSESearcher() {
+		// Boot the ldap server first, then let it sync on the next 30 secs
+		// And get SIGTINT to actually work \o/
+		err := a.Server.Refresh()
+		if err != nil {
+			return err
+		}
 	}
 	err = a.StartBackgroundTasks()
 	if err != nil {
