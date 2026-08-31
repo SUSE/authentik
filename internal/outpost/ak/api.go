@@ -58,6 +58,7 @@ func NewAPIController(akURL url.URL, token string) *APIController {
 	apiConfig := api.NewConfiguration()
 	apiConfig.Host = akURL.Host
 	apiConfig.Scheme = akURL.Scheme
+	apiConfig.Debug = isOpenAPIDebug()
 	apiConfig.HTTPClient = &http.Client{
 		Transport: web.NewUserAgentTransport(
 			constants.UserAgentOutpost(),
@@ -147,6 +148,12 @@ func useSUSESearcher() bool {
 	return os.Getenv("SUSE_DO_NOT_REFRESH_ON_BOOT") == "true"
 }
 
+func isOpenAPIDebug() bool {
+	// Careful: this is for development purposes only, it will log *all* traffic
+	// from the OpenAPI client to standard out.
+	return os.Getenv("SUSE_OPEN_API_DEBUG") == "true"
+}
+
 // Start Starts all handlers, non-blocking
 func (a *APIController) Start() error {
 	if !useSUSESearcher() {
@@ -157,7 +164,7 @@ func (a *APIController) Start() error {
 			return err
 		}
 	}
-	err = a.StartBackgroundTasks()
+	err := a.StartBackgroundTasks()
 	if err != nil {
 		return err
 	}
