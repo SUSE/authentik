@@ -33,6 +33,7 @@ func (pi *ProviderInstance) UserEntry(u api.User) *ldap.Entry {
 		u.Email = api.PtrString("")
 	}
 	attrs = utils.EnsureAttributes(attrs, map[string][]string{
+		"ak-user-pk":     {strconv.FormatInt(int64(u.Pk), 10)},
 		"ak-active":      {strings.ToUpper(strconv.FormatBool(*u.IsActive))},
 		"ak-superuser":   {strings.ToUpper(strconv.FormatBool(u.IsSuperuser))},
 		"memberOf":       pi.GroupsForUser(u),
