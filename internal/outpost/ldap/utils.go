@@ -25,30 +25,41 @@ func getAttributeString(attributes map[string]any, key string) (string, bool) {
 
 func (pi *ProviderInstance) GroupsForUser(user api.User) []string {
 	groups := make([]string, len(user.Groups))
-	for i, group := range user.GroupsObj {
-		groups[i] = pi.GetGroupDN(group.Name)
+	used := 0
+	for _, group := range user.GroupsObj {
+		groups[used] = pi.GetGroupDN(group.Name)
+		used = used + 1
 	}
-	return groups
+	return groups[0:used]
 }
 
 func (pi *ProviderInstance) MembersForGroup(group api.Group) []string {
 	users := make([]string, len(group.UsersObj))
-	for i, user := range group.UsersObj {
-		users[i] = pi.GetUserDN(user.Username)
+	usedUsers := 0
+	for _, user := range group.UsersObj {
+		users[usedUsers] = pi.GetUserDN(user.Username)
+		usedUsers = usedUsers + 1
 	}
 	children := make([]string, len(group.ChildrenObj))
-	for i, child := range group.ChildrenObj {
-		children[i] = pi.GetGroupDN(child.Name)
+	userChildren := 0
+	for _, child := range group.ChildrenObj {
+		children[userChildren] = pi.GetGroupDN(child.Name)
+		userChildren = userChildren + 1
 	}
+	users = users[0:usedUsers]
+	children = children[0:userChildren]
+
 	return append(users, children...)
 }
 
 func (pi *ProviderInstance) MemberOfForGroup(group api.Group) []string {
 	groups := make([]string, len(group.ParentsObj))
-	for i, group := range group.ParentsObj {
-		groups[i] = pi.GetGroupDN(group.Name)
+	used := 0
+	for _, group := range group.ParentsObj {
+		groups[used] = pi.GetGroupDN(group.Name)
+		used = used + 1
 	}
-	return groups
+	return groups[0:used]
 }
 
 func (pi *ProviderInstance) GetUserDN(user string) string {
