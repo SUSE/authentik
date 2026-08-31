@@ -143,3 +143,11 @@ func GetContainerEntry(filterOC string, dn string, ou string) *ldap.Entry {
 func HasSuffixNoCase(s1 string, s2 string) bool {
 	return strings.HasSuffix(strings.ToLower(s1), strings.ToLower(s2))
 }
+
+// Indicates whether input ends with suffix, and has more components before suffix.
+func HasSuffixWithMore(input string, suffix string) (bool, bool) {
+	if hasSuffix := HasSuffixNoCase(input, suffix); hasSuffix {
+		return hasSuffix, HasSuffixNoCase(input, ","+suffix)
+	}
+	return false, false
+}

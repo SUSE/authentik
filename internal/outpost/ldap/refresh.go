@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -19,7 +20,12 @@ import (
 	"goauthentik.io/internal/outpost/ldap/search"
 	directsearch "goauthentik.io/internal/outpost/ldap/search/direct"
 	memorysearch "goauthentik.io/internal/outpost/ldap/search/memory"
+	suse_memorysearch "goauthentik.io/internal/outpost/ldap/search/suse_memory"
 )
+
+func useSUSESearcher() bool {
+	return os.Getenv("SUSE_USE_CUSTOM_MEMORY_SEARCHER") == "true"
+}
 
 func (ls *LDAPServer) getCurrentProvider(pk int32) *ProviderInstance {
 	for _, p := range ls.providers {
@@ -90,7 +96,11 @@ func (ls *LDAPServer) Refresh() error {
 			if existing != nil {
 				oldSearcher = existing.searcher
 			}
-			providers[idx].searcher = memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
+			if useSUSESearcher() {
+				providers[idx].searcher = suse_memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
+			} else {
+				providers[idx].searcher = memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
+			}
 		} else if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
 			providers[idx].searcher = directsearch.NewDirectSearcher(providers[idx])
 		}
