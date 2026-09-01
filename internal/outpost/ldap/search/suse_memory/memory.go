@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"beryju.io/ldap"
 	"github.com/getsentry/sentry-go"
@@ -14,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"goauthentik.io/api/v3"
 	"goauthentik.io/internal/outpost/ak"
+
 	"goauthentik.io/internal/outpost/ldap/constants"
 	"goauthentik.io/internal/outpost/ldap/flags"
 	"goauthentik.io/internal/outpost/ldap/group"
@@ -29,15 +31,6 @@ type MemorySearcher struct {
 	si  server.LDAPServerInstance
 	log *log.Entry
 	ds  *direct.DirectSearcher
-
-	// TODO(josegomezr): index by uuid so this interfaces are uniform without
-	// dying in the process... Failed to get uuid across the board cuz /users/me
-	// does not expose uuid
-	//
-	// ADDENDA: It's worthless, group returns users by numeric PK, not uuid,
-	// reconstructing memberships would become an O(n*m) operation anyways
-	users  suse.MutexMap[int32, api.User]
-	groups suse.MutexMap[string, api.Group]
 }
 
 // TODO: somewhere in the future, we'll find out how to forward SIGTERM from the
@@ -46,11 +39,20 @@ type MemorySearcher struct {
 var globalCtx context.Context = context.TODO()
 var sentinel struct{}
 
+var globalUserCache suse.MutexMap[int32, api.User] = suse.NewMutexMap[int32, api.User]()
+var globalGroupCache suse.MutexMap[string, api.Group] = suse.NewMutexMap[string, api.Group]()
+var syncInProgress = false
+var lastSync *time.Time
+
 func NewMemorySearcher(si server.LDAPServerInstance, existing search.Searcher) *MemorySearcher {
 	ms := &MemorySearcher{
-		si:  si,
-		log: log.WithField("logger", "ldap.searcher.suse_memory"),
-		ds:  direct.NewDirectSearcher(si),
+		si: si,
+		log: log.WithFields(log.Fields{
+			"logger":      "ldap.searcher.suse_memory",
+			"app":         si.GetAppSlug(),
+			"provider-pk": si.GetProviderID(),
+		}),
+		ds: direct.NewDirectSearcher(si),
 	}
 	if existing != nil {
 		if ems, ok := existing.(*MemorySearcher); ok {
@@ -60,8 +62,6 @@ func NewMemorySearcher(si server.LDAPServerInstance, existing search.Searcher) *
 			return ems
 		}
 	}
-	ms.users = suse.NewMutexMap[int32, api.User]()
-	ms.groups = suse.NewMutexMap[string, api.Group]()
 	ms.fetch()
 	ms.log.Debug("initialised memory searcher")
 	return ms
@@ -74,7 +74,7 @@ func (ms *MemorySearcher) enrichUserGroupsFromCache(user *api.User) {
 	used := 0
 
 	for _, groupUuid := range user.Groups {
-		if g, ok := suse.GetFromMapping(ms.groups, groupUuid); ok {
+		if g, ok := suse.GetFromMapping(globalGroupCache, groupUuid); ok {
 			user.GroupsObj[used] = *api.NewPartialGroup(g.Pk, g.NumPk, g.Name)
 			used = used + 1
 		}
@@ -89,7 +89,7 @@ func (ms *MemorySearcher) enrichGroupUsersFromCache(group *api.Group) {
 	used := 0
 
 	for _, userPk := range group.Users {
-		if u, ok := suse.GetFromMapping(ms.users, userPk); ok {
+		if u, ok := suse.GetFromMapping(globalUserCache, userPk); ok {
 			group.UsersObj[used] = *api.NewPartialUser(u.Pk, u.Username, u.Name, u.Uid)
 			used = used + 1
 		}
@@ -165,7 +165,7 @@ func (ms *MemorySearcher) fetchUsers() {
 
 	ms.log.Info("Fetching users...")
 
-	reconstructMemberships := suse.MapSize(ms.groups) > 0
+	reconstructMemberships := suse.MapSize(globalGroupCache) > 0
 
 	for user, err := range userIterator {
 		if err != nil {
@@ -178,7 +178,7 @@ func (ms *MemorySearcher) fetchUsers() {
 			ms.enrichUserGroupsFromCache(&user)
 		}
 
-		suse.SetKeyInMapping(ms.users, user.Pk, user)
+		suse.SetKeyInMapping(globalUserCache, user.Pk, user)
 		seenRefs[user.Pk] = sentinel
 	}
 
@@ -186,7 +186,7 @@ func (ms *MemorySearcher) fetchUsers() {
 		// Now go over the known users, and delete the not seen ones, there's prolly a
 		// better way to do symmetric diff.
 		ms.log.Info("Removing stale user records from memory")
-		suse.SweepMap(ms.users, seenRefs)
+		suse.SweepMap(globalUserCache, seenRefs)
 		ms.log.Info("Done removing stale user records from memory")
 	}
 }
@@ -205,7 +205,7 @@ func (ms *MemorySearcher) fetchGroups() {
 	}
 	seenRefs := suse.NewGenericMarkMapping[string]()
 	failedGroups := false
-	reconstructMemberships := suse.MapSize(ms.users) > 0
+	reconstructMemberships := suse.MapSize(globalUserCache) > 0
 
 	ms.log.Info("Fetching Groups...")
 
@@ -223,14 +223,14 @@ func (ms *MemorySearcher) fetchGroups() {
 				ms.enrichGroupUsersFromCache(&group)
 			}
 
-			suse.SetKeyInMapping(ms.groups, group.Pk, group)
+			suse.SetKeyInMapping(globalGroupCache, group.Pk, group)
 			seenRefs[group.Pk] = sentinel
 		}
 	}
 
 	if !failedGroups {
 		ms.log.Info("Removing stale group records from memory")
-		suse.SweepMap(ms.groups, seenRefs)
+		suse.SweepMap(globalGroupCache, seenRefs)
 		ms.log.Info("Done removing stale group records from memory")
 	}
 }
@@ -252,6 +252,31 @@ func (ms *MemorySearcher) fetch() {
 	//
 	// RSS usage is < 15% of the original status quo.
 	// with proper user/group filters set it can go as low as ~50M ram
+
+	if syncInProgress {
+		ms.log.Info("Busy sincing the global cache, come again later...")
+		return
+	}
+	syncInProgress = true
+	defer func() { syncInProgress = false }()
+
+	if lastSync == nil {
+		ms.log.Info("First sync")
+	} else {
+		ms.log.Info("Follow-up sync")
+		nextSync := lastSync.Add(ms.si.GetRefreshInterval())
+		if nextSync.After(time.Now()) {
+			ms.log.WithFields(log.Fields{
+				"next-sync": nextSync.Format(time.RFC3339),
+			}).Info("Too soon ...")
+			return
+		}
+	}
+	defer func() {
+		t := time.Now()
+		lastSync = &t
+	}()
+
 	ms.log.Info("Fetching users/groups from filters")
 
 	wg := sync.WaitGroup{}
@@ -526,7 +551,7 @@ func (ms *MemorySearcher) sliceUsersFromCache(needUsers bool, flag *flags.UserFl
 
 	// If the user search asks for user records but it's not entitled to search
 	if flag.CanSearch {
-		return &ms.users
+		return &globalUserCache
 	}
 
 	// forward this assignment, god knows why... upstream logic had it set.
@@ -547,12 +572,12 @@ func (ms *MemorySearcher) sliceGroupsFromCache(needGroups bool, flag *flags.User
 
 	// If the Group search asks for Group records but it's not entitled to search
 	if flag.CanSearch {
-		return &ms.groups
+		return &globalGroupCache
 	}
 
 	groups := suse.NewMutexMap[string, api.Group]()
 	for _, groupUuid := range currentUser.Groups {
-		g, ok := suse.GetFromMapping(ms.groups, groupUuid)
+		g, ok := suse.GetFromMapping(globalGroupCache, groupUuid)
 		if !ok {
 			// if this outpost does not know this group, ignore it.
 			continue
@@ -627,7 +652,7 @@ func (ms *MemorySearcher) Search(req *search.Request) (ldap.ServerSearchResult, 
 	}
 	accsp.Finish()
 
-	currentUser, ok := suse.GetFromMapping(ms.users, flag.UserPk)
+	currentUser, ok := suse.GetFromMapping(globalUserCache, flag.UserPk)
 	if !ok {
 		req.Log().WithField("username", flag.UserPk).Warning("Request user is not in local cache")
 		err := errors.New("access denied [not in cache]")
@@ -645,8 +670,8 @@ func (ms *MemorySearcher) Search(req *search.Request) (ldap.ServerSearchResult, 
 	ms.log.WithFields(log.Fields{
 		"need-users":    needUsers,
 		"need-groups":   needGroups,
-		"have-users":    suse.MapSize(ms.users),
-		"have-groups":   suse.MapSize(ms.groups),
+		"have-users":    suse.MapSize(globalUserCache),
+		"have-groups":   suse.MapSize(globalGroupCache),
 		"search-filter": req.FilterObjectClass,
 		"scope":         ldap.ScopeMap[scope],
 	}).Info("Performing search")
