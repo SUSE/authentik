@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"strings"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -41,6 +42,18 @@ type ProviderInstance struct {
 	uidStartNumber int32
 	gidStartNumber int32
 	mfaSupport     bool
+}
+
+func (pi *ProviderInstance) GetRefreshInterval() time.Duration {
+	if pi.s.ac.Outpost.RefreshIntervalS <= 0 {
+		return 5 * time.Minute
+	}
+	// Clamp interval to be at least 30 seconds
+	if pi.s.ac.Outpost.RefreshIntervalS < 30 {
+		return 30 * time.Second
+	}
+	return time.Duration(pi.s.ac.Outpost.RefreshIntervalS) * time.Second
+
 }
 
 func (pi *ProviderInstance) GetAPIClient() *api.APIClient {
