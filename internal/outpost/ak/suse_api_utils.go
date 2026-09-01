@@ -23,7 +23,10 @@ func PaginatorIterator[Tobj any, Treq any, Tres PaginatorResponse[Tobj]](
 			bfreq = req.Page(page)
 			cfreq = bfreq.(PaginatorRequest[Treq, Tres]).PageSize(int32(opts.PageSize))
 
-			opts.Logger.WithField("page", page).Debug("Fetching page from instance")
+			opts.Logger.WithFields(log.Fields{
+				"page":      page,
+				"page-size": int32(opts.PageSize),
+			}).Debug("Fetching page from instance")
 
 			res, hres, err := cfreq.(PaginatorRequest[Treq, Tres]).Execute()
 			if err != nil {

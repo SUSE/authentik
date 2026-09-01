@@ -156,7 +156,7 @@ func (ms *MemorySearcher) fetchUsers() {
 
 	paginatorOpts := ak.PaginatorOptions{
 		PageSize: 500,
-		Logger:   ms.log,
+		Logger:   ms.log.WithField("fetcher", "users"),
 	}
 	userIterator := ak.PaginatorIterator(userRequest, paginatorOpts)
 	seenRefs := suse.NewGenericMarkMapping[int32]()
@@ -201,7 +201,7 @@ func (ms *MemorySearcher) fetchGroups() {
 
 	paginatorOpts := ak.PaginatorOptions{
 		PageSize: 500,
-		Logger:   ms.log,
+		Logger:   ms.log.WithField("fetcher", "groups"),
 	}
 	seenRefs := suse.NewGenericMarkMapping[string]()
 	failedGroups := false
