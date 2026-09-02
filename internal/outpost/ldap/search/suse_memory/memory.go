@@ -654,10 +654,10 @@ func (ms *MemorySearcher) Search(req *search.Request) (ldap.ServerSearchResult, 
 
 	currentUser, ok := suse.GetFromMapping(globalUserCache, flag.UserPk)
 	if !ok {
-		req.Log().WithField("username", flag.UserPk).Warning("Request user is not in local cache")
-		err := errors.New("access denied [not in cache]")
-		// Bail early, user is not known to this outpost.
-		return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultInsufficientAccessRights}, err
+		// User got authorized by the provider, but it's not in the cache slice controlled by the env vars.
+		// We'll add it to the cache, the can search flag still comes from the provider authorization flow.
+		req.Log().WithField("username", flag.UserPk).Warning("Request user is not in local cache, adding it.")
+		suse.SetKeyInMapping(globalUserCache, flag.UserPk, *flag.UserInfo)
 	}
 
 	// End -- AuthN & AuthZ
