@@ -17,7 +17,6 @@ from authentik.core.api.sources import (
 )
 from authentik.core.api.tokens import TokenViewSet
 from authentik.core.api.transactional_applications import TransactionalApplicationView
-from authentik.core.api.users import UserViewSet
 from authentik.core.views.apps import RedirectToAppLaunch
 from authentik.core.views.debug import AccessDeniedView
 from authentik.core.views.interface import (
@@ -30,6 +29,7 @@ from authentik.root.asgi_middleware import AuthMiddlewareStack
 from authentik.root.middleware import ChannelsLoggingMiddleware
 from authentik.root.ws.consumer import MessageConsumer
 from authentik.suse.core.application_views import ApplicationViewSet
+from authentik.suse.core.user_views import UserViewSet
 from authentik.tenants.channels import TenantsAwareMiddleware
 
 urlpatterns = [
