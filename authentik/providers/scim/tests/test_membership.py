@@ -237,8 +237,7 @@ class SCIMMembershipTests(TestCase):
                     "Operations": [
                         {
                             "op": "remove",
-                            "path": "members",
-                            "value": [{"value": user_scim_id}],
+                            "path": f'members[value eq "{user_scim_id}"]',
                         }
                     ],
                 },
@@ -345,7 +344,6 @@ class SCIMMembershipTests(TestCase):
                             "op": "replace",
                             "path": None,
                             "value": {
-                                "id": group_scim_id,
                                 "displayName": group.name,
                                 "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
                                 "externalId": str(group.pk),
@@ -620,7 +618,7 @@ class SCIMMembershipTests(TestCase):
             group.name = "newname" + group.name
             group.save()
 
-            self.assertEqual(mocker.call_count, 3)
+            self.assertEqual(mocker.call_count, 4)
             self.assertEqual(mocker.request_history[0].method, "PATCH")
             self.assertEqual(mocker.request_history[0].path, f"/Groups/{group_scim_id}")
             self.assertJSONEqual(

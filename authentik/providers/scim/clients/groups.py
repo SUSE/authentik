@@ -1,5 +1,6 @@
 """Group client"""
 
+from copy import deepcopy
 from itertools import batched
 from typing import Any
 
@@ -7,7 +8,6 @@ from django.db import transaction
 from django.utils.http import urlencode
 from orjson import dumps
 from pydantic import ValidationError
-from pydanticscim.group import GroupMember
 
 from authentik.core.models import Group
 from authentik.lib.merge import MERGE_LIST_UNIQUE
@@ -25,6 +25,7 @@ from authentik.providers.scim.clients.exceptions import (
 )
 from authentik.providers.scim.clients.schema import (
     SCIM_GROUP_SCHEMA,
+    GroupMember,
     PatchOp,
     PatchOperation,
     PatchRequest,
@@ -134,12 +135,11 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
         self._patch_add_users(connection, users)
         return connection
 
-    def diff(self, local_created: dict[str, Any], connection: SCIMProviderUser):
+    def diff(self, local_created: dict[str, Any], connection: SCIMProviderGroup):
         """Check if a group is different than what we last wrote to the remote system.
         Returns true if there is a difference in data."""
         local_known = connection.attributes
-        local_updated = {}
-        MERGE_LIST_UNIQUE.merge(local_updated, local_known)
+        local_updated = deepcopy(local_known)
         MERGE_LIST_UNIQUE.merge(local_updated, local_created)
         return dumps(local_updated) != dumps(local_known)
 
@@ -197,6 +197,7 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
     ):
         """Update a group via PATCH request"""
         # Patch group's attributes instead of replacing it and re-adding users if we can
+        value = scim_group.model_dump(mode="json", exclude_unset=True, exclude={"id"})
         self._request(
             "PATCH",
             f"/Groups/{connection.scim_id}",
@@ -205,7 +206,7 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
                     PatchOperation(
                         op=PatchOp.replace,
                         path=None,
-                        value=scim_group.model_dump(mode="json", exclude_unset=True),
+                        value=value,
                     )
                 ]
             ).model_dump(mode="json"),
@@ -271,10 +272,27 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
             self._request(
                 "PATCH",
                 f"/Groups/{group_id}",
-                json=req.model_dump(
-                    mode="json",
-                ),
+                json=req.model_dump(mode="json", exclude_none=True),
             )
+
+    def _make_delete_op(self, scim_id):
+        match self.provider.compatibility_mode:
+            case SCIMCompatibilityMode.AWS:
+                return PatchOperation(
+                    op=PatchOp.remove,
+                    path="members",
+                    value=[
+                        GroupMember(value=scim_id).model_dump(
+                            mode="json",
+                            exclude_unset=True,
+                        )
+                    ],
+                )
+            case _:
+                return PatchOperation(
+                    op=PatchOp.remove,
+                    path=f'members[value eq "{scim_id}"]',
+                )
 
     @transaction.atomic
     def patch_compare_users(self, group: Group):
@@ -310,10 +328,10 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
             if user.value not in users_should:
                 users_to_remove.append(user.value)
         # Check users that should be in the group and add them
-        if current_group.members is not None:
-            for user in users_should:
-                if len([x for x in current_group.members if x.value == user]) < 1:
-                    users_to_add.append(user)
+        existing_member_ids = {x.value for x in (current_group.members or [])}
+        for user in users_should:
+            if user not in existing_member_ids:
+                users_to_add.append(user)
         # Only send request if we need to make changes
         if len(users_to_add) < 1 and len(users_to_remove) < 1:
             return
@@ -323,18 +341,16 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
                 PatchOperation(
                     op=PatchOp.add,
                     path="members",
-                    value=[{"value": x}],
+                    value=[
+                        GroupMember(value=x).model_dump(
+                            mode="json",
+                            exclude_unset=True,
+                        )
+                    ],
                 )
                 for x in users_to_add
             ],
-            *[
-                PatchOperation(
-                    op=PatchOp.remove,
-                    path="members",
-                    value=[{"value": x}],
-                )
-                for x in users_to_remove
-            ],
+            *[self._make_delete_op(x) for x in users_to_remove],
         )
 
     def _patch_add_users(self, scim_group: SCIMProviderGroup, users_set: set[int]):
@@ -354,7 +370,12 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
                 PatchOperation(
                     op=PatchOp.add,
                     path="members",
-                    value=[{"value": x}],
+                    value=[
+                        GroupMember(value=x).model_dump(
+                            mode="json",
+                            exclude_unset=True,
+                        )
+                    ],
                 )
                 for x in user_ids
             ],
@@ -373,12 +394,5 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
             return
         self._patch_chunked(
             scim_group.scim_id,
-            *[
-                PatchOperation(
-                    op=PatchOp.remove,
-                    path="members",
-                    value=[{"value": x}],
-                )
-                for x in user_ids
-            ],
+            *[self._make_delete_op(x) for x in user_ids],
         )
