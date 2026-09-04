@@ -3,6 +3,7 @@
 from functools import lru_cache
 from typing import Any, TypeVar
 
+from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import (
@@ -14,6 +15,7 @@ from django.db.models import (
 )
 from django.db.models.expressions import RawSQL
 
+from authentik.suse.guardian import shortcuts
 from guardian.core import ObjectPermissionChecker
 from guardian.ctypes import get_content_type
 from guardian.exceptions import (
@@ -178,6 +180,16 @@ T = TypeVar("T", bound=Model)
 
 
 def get_objects_for_user(  # noqa: PLR0912 PLR0915
+    user: Any,
+    perms: str | list[str],
+    queryset: QuerySet | None = None,
+) -> QuerySet:
+    if getattr(settings, "USE_CUSTOM_GUARDIAN", False):
+        return shortcuts.get_objects_for_user(user, perms, queryset=queryset)
+    return _get_objects_for_user(user, perms, queryset=queryset)
+
+
+def _get_objects_for_user(  # noqa: PLR0912 PLR0915
     user: Any,
     perms: str | list[str],
     queryset: QuerySet | None = None,
