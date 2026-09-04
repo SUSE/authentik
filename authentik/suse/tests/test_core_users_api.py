@@ -149,3 +149,137 @@ class TestCoreUsersPasswordPermissions(APITestCase):
             data=dict(password="foo-bar-baz"),
         )
         self.assertEqual(response.status_code, 403)
+
+
+class TestCoreUsersMergeAttributesAPI(APITestCase):
+    """Test User Email Validation API based on dynamic configuration"""
+
+    def setUp(self) -> None:
+        self.admin = create_test_admin_user()
+        self.user = create_test_user()
+        self.user.attributes = dict(foo="bar", bar="baz")
+        self.user.save()
+
+    # Upstream behavior
+    def test_original_update_attributes(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.put(
+            reverse("authentik_api:user-detail", kwargs={"pk": self.user.pk}),
+            data=dict(
+                attributes=dict(qux="quax"),
+                username=self.user.username,
+                name=self.user.name,
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        assert self.user.attributes.get("bar") is None, "Attribute 'baz' didn't get overwritten"
+
+    def test_original_patch_attributes(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.patch(
+            reverse("authentik_api:user-detail", kwargs={"pk": self.user.pk}),
+            data=dict(attributes=dict(qux="quax")),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        assert self.user.attributes.get("bar") is None, "Attribute 'baz' didn't get overwritten"
+
+    # SUSE Behavior
+    @override_settings(OVERRIDE_ENDPOINT=dict(core_users_update=True))
+    def test_update_attributes(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.put(
+            reverse("authentik_api:user-detail", kwargs={"pk": self.user.pk}),
+            data=dict(
+                attributes=dict(qux="quax"),
+                username=self.user.username,
+                name=self.user.name,
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        assert self.user.attributes.get("bar") == "baz", "Attribute 'baz' got lost after PUT!"
+
+    @override_settings(OVERRIDE_ENDPOINT=dict(core_users_update=True))
+    def test_update_attributes_wants_to_replace(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.put(
+            reverse(
+                "authentik_api:user-detail",
+                kwargs={"pk": self.user.pk},
+                query=dict(replace_attributes="true"),
+            ),
+            data=dict(
+                attributes=dict(qux="quax"),
+                username=self.user.username,
+                name=self.user.name,
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        new_bar = self.user.attributes.get("bar")
+        assert (
+            new_bar is None
+        ), "Attribute 'baz' was not replaced after PUT + replace_attributes=true!"
+
+        qux = self.user.attributes.get("qux")
+        assert qux == "quax", "Attribute 'qux' did not update"
+
+    @override_settings(OVERRIDE_ENDPOINT=dict(core_users_partial_update=True))
+    def test_patch_attributes(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.patch(
+            reverse("authentik_api:user-detail", kwargs={"pk": self.user.pk}),
+            data=dict(attributes=dict(qux="quax")),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        new_bar = self.user.attributes.get("bar")
+        assert new_bar == "baz", "Attribute 'bar' was replaced after PATCH!"
+
+        qux = self.user.attributes.get("qux")
+        assert qux == "quax", "Attribute 'qux' did not update"
+
+    @override_settings(OVERRIDE_ENDPOINT=dict(core_users_partial_update=True))
+    def test_patch_attributes_wants_to_replace(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.patch(
+            reverse(
+                "authentik_api:user-detail",
+                kwargs={"pk": self.user.pk},
+                query=dict(replace_attributes="true"),
+            ),
+            data=dict(attributes=dict(qux="quax")),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        new_bar = self.user.attributes.get("bar")
+        assert (
+            new_bar is None
+        ), "Attribute 'bar' was not replaced after PATCH + replace_attributes=true!"
+
+        qux = self.user.attributes.get("qux")
+        assert qux == "quax", "Attribute 'qux' did not update"
+
+    # SUSE Behavior cross-checking (enabling PATCH but not PUT and vice versa)
+
+    @override_settings(OVERRIDE_ENDPOINT=dict(core_users_partial_update=True))
+    def test_update_attributes_when_put_overwritten(self):
+        self.test_original_update_attributes()
+
+    @override_settings(OVERRIDE_ENDPOINT=dict(core_users_update=True))
+    def test_patch_attributes_when_put_overwritten(self):
+        self.test_original_patch_attributes()
