@@ -1,6 +1,8 @@
 package server
 
 import (
+	"time"
+
 	"beryju.io/ldap"
 
 	"goauthentik.io/api/v3"
@@ -15,6 +17,7 @@ type LDAPServerInstance interface {
 	GetInvalidationFlowSlug() *string
 	GetAppSlug() string
 	GetProviderID() int32
+	GetRefreshInterval() time.Duration
 
 	UserEntry(u api.User) *ldap.Entry
 
