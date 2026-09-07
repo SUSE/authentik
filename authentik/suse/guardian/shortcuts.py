@@ -110,6 +110,31 @@ def get_objects_for_user(  # noqa: PLR0912 PLR0915
         **{normalized_pk_field: Cast(pk_field, pk)}
     ).values_list(normalized_pk_field, flat=True)
 
+    if getattr(queryset.model, "parents", None) is not None:
+        # here, we play the same game pretty much, this time we extend the
+        # subject part of the permissions to include group children.
+        #
+        # Meaning: granting view permissions on a group parent, gives you view
+        # permissions on the children.
+
+        normalized_parents_field = f"t__normalized_{queryset.model.parents.field.name}"
+        normalized_parents_field_lookup = f"{normalized_parents_field}__in"
+
+        # Pull now groups matching the current pks returned by the original
+        # query _and_ matching the parents.
+        values_list = perms_queryset.values_list(normalized_pk_field, flat=True)
+        perms_queryset = (
+            queryset.model.objects.annotate(
+                **{
+                    normalized_pk_field: Cast(pk.name, pk),
+                    normalized_parents_field: Cast(queryset.model.parents.field.name, pk),
+                }
+            ).filter(
+                Q(**{normalized_pk_field_lookup: values_list})
+                | Q(**{normalized_parents_field_lookup: values_list})
+            )
+        ).values_list(normalized_pk_field, flat=True)
+
     # at this point now the `normalized_pk_field` field in the `perms_queryset` is
     # guaranteed to be the target type (uuid, integer, varchar).
     queryset = queryset.annotate(**{normalized_pk_field: Cast(pk.name, pk)})
