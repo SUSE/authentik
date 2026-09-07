@@ -74,7 +74,7 @@ def raise_connection_error(func: Callable[P, R]) -> Callable[P, R]:
 # Django representation of pg_try_advisory_lock
 class PGTryLock(Func):
     arity = 1
-    function = "pg_try_advisory_lock"
+    function = "pg_try_advisory_xact_lock"
     output_field = BooleanField()
     conditional = True
 
@@ -290,7 +290,6 @@ class _PostgresConsumer(Consumer):
         self.db_alias = db_alias
         self.queue_name = queue_name
         self.timeout = timeout // 1000
-        self.to_unlock: set[str] = set()
         self.in_processing: set[str] = set()
         self.prefetch = prefetch
         self.misses = 0
@@ -437,8 +436,7 @@ class _PostgresConsumer(Consumer):
             cursor.execute(sql, params)
 
             if cursor.rowcount != 1:
-                # Lock was not successful, mark it for unlock on next iteration
-                self._unlock_message(message_id)
+                # Lock was not successful, other consumer stole it from us
                 return None
 
         # Go on normally
@@ -461,7 +459,6 @@ class _PostgresConsumer(Consumer):
 
         # Run required processes first
         self._scheduler()
-        self._purge_locks()
 
         while True:
             # Try getting a message_id out of the in-flight set
@@ -513,26 +510,12 @@ class _PostgresConsumer(Consumer):
                     return None
                 # else: retry above, self.pending is guaranteed to have content
 
-    def _unlock_message(self, message_id: str) -> bool:
-        self.logger.debug("Unlocking message", message_id=message_id)
-        try:
-            with self.locks_connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT pg_advisory_unlock(%s)",
-                    (self._get_message_lock_id(message_id),),
-                )
-            return True
-        except DATABASE_ERRORS:
-            self.to_unlock.add(str(message_id))
-            return False
-
     def _post_process_message(self, message: Message[Any], state: TaskState) -> None:
         self.logger.debug("Post-processing message", message=message.message_id, state=state)
         self.logger.debug(
             "Removing from the in-memory queue", message=message.message_id, state=state
         )
         self.discard_in_processing(str(message.message_id))
-        self.to_unlock.add(str(message.message_id))
 
         self.logger.debug("Marking it in the DB", message=message.message_id, state=state)
         self.query_set.filter(
@@ -560,7 +543,6 @@ class _PostgresConsumer(Consumer):
             state=TaskState.QUEUED,
         )
         for message in messages:
-            self.to_unlock.add(str(message.message_id))
             self.discard_in_processing(str(message.message_id))
 
     def _scheduler(self) -> None:
@@ -570,15 +552,6 @@ class _PostgresConsumer(Consumer):
             return
         self.scheduler.run()
         self.scheduler_last_run = timezone.now()
-
-    def _purge_locks(self) -> None:
-        while True:
-            try:
-                message_id = self.to_unlock.pop()
-            except KeyError:
-                break
-            if not self._unlock_message(str(message_id)):
-                return
 
     def _auto_purge(self) -> None:
         if timezone.now() - self.task_purge_last_run < self.task_purge_interval:
@@ -600,16 +573,6 @@ class _PostgresConsumer(Consumer):
     @raise_connection_error
     def close(self) -> None:
         try:
-            self._purge_locks()
-        finally:
-            if self._locks_connection is not None:
-                conn = self._locks_connection
-                self._locks_connection = None
-                try:
-                    conn.close()
-                except DATABASE_ERRORS:
-                    pass
-            try:
-                connections.close_all()
-            except DATABASE_ERRORS:
-                pass
+            connections.close_all()
+        except DATABASE_ERRORS:
+            pass
