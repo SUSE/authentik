@@ -90,3 +90,5 @@ OVERRIDE_ENDPOINT: dict[str, bool] = {
     endpoint_name: CONFIG.get_bool(f"suse.override_endpoint.{endpoint_name}", False)
     for endpoint_name in known_endpoints
 }
+
+USE_SUSE_SCIM_CLIENT = CONFIG.get_bool("suse.use_scim_client", False)
