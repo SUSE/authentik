@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"beryju.io/ldap"
-	"goauthentik.io/api/v3"
 	"github.com/getsentry/sentry-go"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	"goauthentik.io/api/v3"
 	"goauthentik.io/internal/outpost/flow"
 	"goauthentik.io/internal/outpost/ldap/bind"
 	"goauthentik.io/internal/outpost/ldap/flags"
