@@ -150,46 +150,6 @@ class UserSerializer(ModelSerializer):
     )
     email = EmailField(required=False)
 
-    def validate_email(self, email: str) -> str:
-        """Validate email for all user types."""
-
-        # Blueprints can do anything and are not limited.
-        if SERIALIZER_CONTEXT_BLUEPRINT in self.context:
-            return email
-
-        # always allow user updates in which the email field is not changed,
-        # and skip unnecessary processing in case of an empty email field
-        if (self.instance and self.instance.email == email) or not email:
-            return email
-
-        request = self.context.get("request")
-        if not request or not hasattr(request, "user"):
-            # TODO: any better exception here?
-            raise ValidationError("Failed to read user privileges. This is an operational problem.")
-
-        caller = request.user
-
-        _, domain = email.split("@", 1)
-
-        constraints_config = CONSTRAINTS["email"]
-        restricted_domains = constraints_config["restricted_domains"]
-
-        # be safe in case of incomplete configuration
-        if not restricted_domains:
-            raise ValidationError(
-                "Failed to read domain restrictions. This is an operational problem."
-            )
-
-        if domain not in restricted_domains:
-            return email
-
-        for role, domains in constraints_config["roles_domains"].items():
-            if caller.roles.filter(name=role).exists():
-                if domain in domains.get("allow", []):
-                    return email
-
-        raise ValidationError("You are not authorized to set this email address.")
-
     @property
     def _should_include_groups(self) -> bool:
         request: Request = self.context.get("request", None)
