@@ -39,8 +39,8 @@ type MemorySearcher struct {
 var globalCtx context.Context = context.TODO()
 var sentinel struct{}
 
-var globalUserCache suse.MutexMap[int32, api.User] = suse.NewMutexMap[int32, api.User]()
-var globalGroupCache suse.MutexMap[string, api.Group] = suse.NewMutexMap[string, api.Group]()
+var globalUserCache suse.MutexMap[int32, *api.User] = suse.NewMutexMap[int32, *api.User]()
+var globalGroupCache suse.MutexMap[string, *api.Group] = suse.NewMutexMap[string, *api.Group]()
 var syncInProgress = false
 var lastSync *time.Time
 
@@ -165,20 +165,13 @@ func (ms *MemorySearcher) fetchUsers() {
 
 	ms.log.Info("Fetching users...")
 
-	reconstructMemberships := suse.MapSize(globalGroupCache) > 0
-
 	for user, err := range userIterator {
 		if err != nil {
 			ms.log.Error("Failed requesting users. Aborting")
 			failedUsers = true
 			break
 		}
-
-		if reconstructMemberships {
-			ms.enrichUserGroupsFromCache(&user)
-		}
-
-		suse.SetKeyInMapping(globalUserCache, user.Pk, user)
+		suse.SetKeyInMapping(globalUserCache, user.Pk, &user)
 		seenRefs[user.Pk] = sentinel
 	}
 
@@ -205,7 +198,6 @@ func (ms *MemorySearcher) fetchGroups() {
 	}
 	seenRefs := suse.NewGenericMarkMapping[string]()
 	failedGroups := false
-	reconstructMemberships := suse.MapSize(globalUserCache) > 0
 
 	ms.log.Info("Fetching Groups...")
 
@@ -218,12 +210,7 @@ func (ms *MemorySearcher) fetchGroups() {
 				failedGroups = true
 				break
 			}
-
-			if reconstructMemberships {
-				ms.enrichGroupUsersFromCache(&group)
-			}
-
-			suse.SetKeyInMapping(globalGroupCache, group.Pk, group)
+			suse.SetKeyInMapping(globalGroupCache, group.Pk, &group)
 			seenRefs[group.Pk] = sentinel
 		}
 	}
@@ -290,6 +277,16 @@ func (ms *MemorySearcher) fetch() {
 		ms.fetchGroups()
 	}()
 	wg.Wait()
+
+	suse.IterateMap(globalUserCache, func(_ int32, u *api.User) bool {
+		ms.enrichUserGroupsFromCache(u)
+		return true
+	})
+
+	suse.IterateMap(globalGroupCache, func(_ string, g *api.Group) bool {
+		ms.enrichGroupUsersFromCache(g)
+		return true
+	})
 }
 
 func (ms *MemorySearcher) SearchBase(req *search.Request) (ldap.ServerSearchResult, error) {
@@ -332,12 +329,11 @@ func (ms *MemorySearcher) filterAsksForBaseVirtualGroup(req *search.Request) boo
 	return utils.IncludeObjectClass(req.FilterObjectClass, constants.GetVirtualGroupOCs())
 }
 
-func (ms *MemorySearcher) processScopeBaseRequest(req *search.Request, entries *[]*ldap.Entry, slicedUsers *suse.MutexMap[int32, api.User], slicedGroups *suse.MutexMap[string, api.Group]) {
+func (ms *MemorySearcher) processScopeBaseRequest(req *search.Request, entries *[]*ldap.Entry, slicedUsers *suse.MutexMap[int32, *api.User], slicedGroups *suse.MutexMap[string, *api.Group]) {
 	requestDNisBaseDN := strings.EqualFold(req.BaseDN, ms.si.GetBaseDN())
 	// If the client wants the root only
 	if requestDNisBaseDN && ms.filterAsksForDomain(req) {
 		// Add the base entry, and stop here.
-		ms.enrichSearchBaseEntries(req, entries)
 		return
 	}
 
@@ -352,8 +348,8 @@ func (ms *MemorySearcher) processScopeBaseRequest(req *search.Request, entries *
 
 		// If the client wants a specific user, then find the user by strict dn match
 		if wantsSpecificUser && utils.IncludeObjectClass(req.FilterObjectClass, constants.GetUserOCs()) {
-			suse.IterateMap(*slicedUsers, func(_ int32, u api.User) bool {
-				entry := ms.si.UserEntry(u)
+			suse.IterateMap(*slicedUsers, func(_ int32, u *api.User) bool {
+				entry := ms.si.UserEntry(*u)
 				if strings.EqualFold(req.BaseDN, entry.DN) {
 					*entries = append(*entries, entry)
 					return false
@@ -376,8 +372,8 @@ func (ms *MemorySearcher) processScopeBaseRequest(req *search.Request, entries *
 
 		// If the client wants a group, then find the group by strict dn match
 		if wantsSpecificGroup && utils.IncludeObjectClass(req.FilterObjectClass, constants.GetGroupOCs()) {
-			suse.IterateMap(*slicedGroups, func(_ string, g api.Group) bool {
-				entry := group.FromAPIGroup(g, ms.si)
+			suse.IterateMap(*slicedGroups, func(_ string, g *api.Group) bool {
+				entry := group.FromAPIGroup(*g, ms.si)
 				if strings.EqualFold(req.BaseDN, entry.DN) {
 					*entries = append(*entries, entry.Entry())
 					return false
@@ -400,8 +396,8 @@ func (ms *MemorySearcher) processScopeBaseRequest(req *search.Request, entries *
 
 		// If the client wants a virtual-group, then find the group by strict dn match
 		if wantsSpecificVirtualGroup && utils.IncludeObjectClass(req.FilterObjectClass, constants.GetVirtualGroupOCs()) {
-			suse.IterateMap(*slicedUsers, func(_ int32, u api.User) bool {
-				entry := ms.si.UserEntry(u)
+			suse.IterateMap(*slicedUsers, func(_ int32, u *api.User) bool {
+				entry := ms.si.UserEntry(*u)
 				if strings.EqualFold(req.BaseDN, entry.DN) {
 					*entries = append(*entries, entry)
 					return false
@@ -416,7 +412,7 @@ func (ms *MemorySearcher) processScopeBaseRequest(req *search.Request, entries *
 	return
 }
 
-func (ms *MemorySearcher) processScopeOneRequest(req *search.Request, entries *[]*ldap.Entry, slicedUsers *suse.MutexMap[int32, api.User], slicedGroups *suse.MutexMap[string, api.Group]) {
+func (ms *MemorySearcher) processScopeOneRequest(req *search.Request, entries *[]*ldap.Entry, slicedUsers *suse.MutexMap[int32, *api.User], slicedGroups *suse.MutexMap[string, *api.Group]) {
 	requestDNisBaseDN := strings.EqualFold(req.BaseDN, ms.si.GetBaseDN())
 	// if request DN is base, then return the 3 nested containers: groups, users,
 	// virtual-groups
@@ -438,8 +434,8 @@ func (ms *MemorySearcher) processScopeOneRequest(req *search.Request, entries *[
 			return
 		}
 
-		suse.IterateMap(*slicedUsers, func(_ int32, u api.User) bool {
-			entry := ms.si.UserEntry(u)
+		suse.IterateMap(*slicedUsers, func(_ int32, u *api.User) bool {
+			entry := ms.si.UserEntry(*u)
 			*entries = append(*entries, entry)
 			return true
 		})
@@ -453,8 +449,8 @@ func (ms *MemorySearcher) processScopeOneRequest(req *search.Request, entries *[
 			return
 		}
 
-		suse.IterateMap(*slicedGroups, func(_ string, g api.Group) bool {
-			entry := group.FromAPIGroup(g, ms.si)
+		suse.IterateMap(*slicedGroups, func(_ string, g *api.Group) bool {
+			entry := group.FromAPIGroup(*g, ms.si)
 			*entries = append(*entries, entry.Entry())
 			return true
 		})
@@ -468,8 +464,8 @@ func (ms *MemorySearcher) processScopeOneRequest(req *search.Request, entries *[
 			return
 		}
 
-		suse.IterateMap(*slicedUsers, func(_ int32, u api.User) bool {
-			entry := group.FromAPIUser(u, ms.si).Entry()
+		suse.IterateMap(*slicedUsers, func(_ int32, u *api.User) bool {
+			entry := group.FromAPIUser(*u, ms.si).Entry()
 			*entries = append(*entries, entry)
 			return true
 		})
@@ -478,7 +474,7 @@ func (ms *MemorySearcher) processScopeOneRequest(req *search.Request, entries *[
 	return
 }
 
-func (ms *MemorySearcher) processScopeSubRequest(req *search.Request, entries *[]*ldap.Entry, slicedUsers *suse.MutexMap[int32, api.User], slicedGroups *suse.MutexMap[string, api.Group]) {
+func (ms *MemorySearcher) processScopeSubRequest(req *search.Request, entries *[]*ldap.Entry, slicedUsers *suse.MutexMap[int32, *api.User], slicedGroups *suse.MutexMap[string, *api.Group]) {
 	requestDNisBaseDN := strings.EqualFold(req.BaseDN, ms.si.GetBaseDN())
 	requestDnIsUserDn := strings.EqualFold(req.BaseDN, ms.si.GetBaseUserDN())
 	requestDnIsGroupDN := strings.EqualFold(req.BaseDN, ms.si.GetBaseGroupDN())
@@ -492,8 +488,8 @@ func (ms *MemorySearcher) processScopeSubRequest(req *search.Request, entries *[
 			*entries = append(*entries, ms.entryForBaseUserDN(req))
 		}
 
-		suse.IterateMap(*slicedUsers, func(_ int32, u api.User) bool {
-			entry := ms.si.UserEntry(u)
+		suse.IterateMap(*slicedUsers, func(_ int32, u *api.User) bool {
+			entry := ms.si.UserEntry(*u)
 			*entries = append(*entries, entry)
 			return true
 		})
@@ -505,8 +501,8 @@ func (ms *MemorySearcher) processScopeSubRequest(req *search.Request, entries *[
 		if ms.filterAsksForContainers(req) && ms.filterAsksForBaseGroup(req) {
 			*entries = append(*entries, ms.entryForBaseGroupDN(req))
 		}
-		suse.IterateMap(*slicedGroups, func(_ string, g api.Group) bool {
-			entry := group.FromAPIGroup(g, ms.si)
+		suse.IterateMap(*slicedGroups, func(_ string, g *api.Group) bool {
+			entry := group.FromAPIGroup(*g, ms.si)
 			*entries = append(*entries, entry.Entry())
 			return true
 		})
@@ -518,8 +514,8 @@ func (ms *MemorySearcher) processScopeSubRequest(req *search.Request, entries *[
 		if ms.filterAsksForContainers(req) && ms.filterAsksForBaseVirtualGroup(req) {
 			*entries = append(*entries, ms.entryForBaseVirtualGroupDN(req))
 		}
-		suse.IterateMap(*slicedUsers, func(_ int32, u api.User) bool {
-			entry := group.FromAPIUser(u, ms.si).Entry()
+		suse.IterateMap(*slicedUsers, func(_ int32, u *api.User) bool {
+			entry := group.FromAPIUser(*u, ms.si).Entry()
 			*entries = append(*entries, entry)
 			return true
 		})
@@ -542,10 +538,10 @@ func (ms *MemorySearcher) enrichSearchBaseEntries(req *search.Request, entries *
 		*entries = append(*entries, e)
 	}
 }
-func (ms *MemorySearcher) sliceUsersFromCache(needUsers bool, flag *flags.UserFlags, currentUser api.User) *suse.MutexMap[int32, api.User] {
+func (ms *MemorySearcher) sliceUsersFromCache(needUsers bool, flag *flags.UserFlags, currentUser *api.User) *suse.MutexMap[int32, *api.User] {
 	// if users are not needed, then return an empty slice
 	if !needUsers {
-		m := suse.NewMutexMap[int32, api.User]()
+		m := suse.NewMutexMap[int32, *api.User]()
 		return &m
 	}
 
@@ -555,18 +551,18 @@ func (ms *MemorySearcher) sliceUsersFromCache(needUsers bool, flag *flags.UserFl
 	}
 
 	// forward this assignment, god knows why... upstream logic had it set.
-	flag.UserInfo = &currentUser
+	flag.UserInfo = currentUser
 
 	// User was found in cache, and it's not allowed to search, procure a user
 	// list only contianing the request user.
-	u := suse.NewMutexMap[int32, api.User]()
+	u := suse.NewMutexMap[int32, *api.User]()
 	suse.SetKeyInMapping(u, currentUser.Pk, currentUser)
 	return &u
 }
-func (ms *MemorySearcher) sliceGroupsFromCache(needGroups bool, flag *flags.UserFlags, currentUser api.User) *suse.MutexMap[string, api.Group] {
+func (ms *MemorySearcher) sliceGroupsFromCache(needGroups bool, flag *flags.UserFlags, currentUser *api.User) *suse.MutexMap[string, *api.Group] {
 	// if Groups are not needed, then return an empty slice
 	if !needGroups {
-		m := suse.NewMutexMap[string, api.Group]()
+		m := suse.NewMutexMap[string, *api.Group]()
 		return &m
 	}
 
@@ -575,7 +571,7 @@ func (ms *MemorySearcher) sliceGroupsFromCache(needGroups bool, flag *flags.User
 		return &globalGroupCache
 	}
 
-	groups := suse.NewMutexMap[string, api.Group]()
+	groups := suse.NewMutexMap[string, *api.Group]()
 	for _, groupUuid := range currentUser.Groups {
 		g, ok := suse.GetFromMapping(globalGroupCache, groupUuid)
 		if !ok {
@@ -657,7 +653,7 @@ func (ms *MemorySearcher) Search(req *search.Request) (ldap.ServerSearchResult, 
 		// User got authorized by the provider, but it's not in the cache slice controlled by the env vars.
 		// We'll add it to the cache, the can search flag still comes from the provider authorization flow.
 		req.Log().WithField("username", flag.UserPk).Warning("Request user is not in local cache, adding it.")
-		suse.SetKeyInMapping(globalUserCache, flag.UserPk, *flag.UserInfo)
+		suse.SetKeyInMapping(globalUserCache, flag.UserPk, flag.UserInfo)
 	}
 
 	// End -- AuthN & AuthZ
@@ -678,8 +674,8 @@ func (ms *MemorySearcher) Search(req *search.Request) (ldap.ServerSearchResult, 
 
 	// Slice the result set before processing users that can't search the
 	// directory get a slice of the cache where only themselves are included.
-	var slicedUsers *suse.MutexMap[int32, api.User] = ms.sliceUsersFromCache(needUsers, flag, currentUser)
-	var slicedGroups *suse.MutexMap[string, api.Group] = ms.sliceGroupsFromCache(needGroups, flag, currentUser)
+	var slicedUsers *suse.MutexMap[int32, *api.User] = ms.sliceUsersFromCache(needUsers, flag, currentUser)
+	var slicedGroups *suse.MutexMap[string, *api.Group] = ms.sliceGroupsFromCache(needGroups, flag, currentUser)
 
 	// Now process the request
 	switch scope {
