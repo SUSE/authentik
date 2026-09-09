@@ -84,7 +84,14 @@ CONFIG.log(
 
 # Key   = endpoint name: 'core_applications_check_access_retrieve'
 # Value = True -> Use SUSE version, False -> Use upstream version
-known_endpoints = ("core_applications_check_access_retrieve",)
+known_endpoints = (
+    "core_applications_check_access_retrieve",
+    "core_users_update",
+    "core_users_partial_update",
+    "core_users_recovery_create",
+    "core_users_set_password_create",
+    "rbac_permissions_roles_list",
+)
 
 OVERRIDE_ENDPOINT: dict[str, bool] = {
     endpoint_name: CONFIG.get_bool(f"suse.override_endpoint.{endpoint_name}", False)

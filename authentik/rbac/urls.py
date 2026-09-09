@@ -3,8 +3,8 @@
 from authentik.rbac.api.initial_permissions import InitialPermissionsViewSet
 from authentik.rbac.api.rbac import RBACPermissionViewSet
 from authentik.rbac.api.rbac_assigned_by_roles import RoleAssignedPermissionViewSet
-from authentik.rbac.api.rbac_roles import RolePermissionViewSet
 from authentik.rbac.api.roles import RoleViewSet
+from authentik.suse.rbac.rbac_views import RolePermissionViewSet
 
 api_urlpatterns = [
     (
