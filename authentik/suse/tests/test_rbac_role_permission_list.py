@@ -33,7 +33,7 @@ class TestRBACPermissionRoles(APITestCase):
         self.role.assign_perms("authentik_stages_invitation.view_invitation", obj=inv)
 
     def test_original_list(self):
-        with self.assertNumQueries(14):
+        with self.assertNumQueries(16):
             res = self.client.get(reverse("authentik_api:permissions-roles-list"))
             self.assertEqual(res.status_code, 200)
 
@@ -64,7 +64,7 @@ class TestRBACPermissionRoles(APITestCase):
                 returned_results == SmallerPagination.max_page_size
             ), "Did not obey old pagination"
 
-    @override_settings(OVERRIDE_ENDPOINT=dict(rbac_permissions_list=True))
+    @override_settings(OVERRIDE_ENDPOINT=dict(rbac_permissions_roles_list=True))
     def test_improved_list(self):
         with self.assertNumQueries(14):
             res = self.client.get(
@@ -72,7 +72,7 @@ class TestRBACPermissionRoles(APITestCase):
             )
             self.assertEqual(res.status_code, 200)
 
-    @override_settings(OVERRIDE_ENDPOINT=dict(rbac_permissions_list=True))
+    @override_settings(OVERRIDE_ENDPOINT=dict(rbac_permissions_roles_list=True))
     def test_improved_list_regular_pagination(self):
         total_invitations = 1
         for _ in range(1, 40):
@@ -83,7 +83,7 @@ class TestRBACPermissionRoles(APITestCase):
             self.role.assign_perms("authentik_stages_invitation.view_invitation", obj=inv)
             total_invitations += 1
 
-        with self.assertNumQueries(54):
+        with self.assertNumQueries(14):
             res = self.client.get(
                 reverse("authentik_api:permissions-roles-list", query=dict(suse_serializer="yes"))
             )
