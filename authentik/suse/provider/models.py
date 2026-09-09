@@ -1,8 +1,10 @@
 from django.db import models
 
 
+# TODO Delete once patch is working
 class SUSEProviderSyncState(models.Model):
-    # Should actually be foreign key. But in an effort to keep our models independent let's ignore that for now.
+    # Should actually be foreign key.
+    # But in an effort to keep our models independent let's ignore that for now.
     provider_id = models.IntegerField(primary_key=True, editable=False)
     last_modify_timestamp = models.DateTimeField("Last processed modify timestamp in LDAP")
 

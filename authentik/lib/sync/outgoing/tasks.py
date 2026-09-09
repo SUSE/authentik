@@ -1,8 +1,6 @@
 from django.core.paginator import Paginator
-from django.db import transaction
 from django.db.models import Model, QuerySet
 from django.db.models.query import Q
-from django.utils.timezone import now
 from dramatiq.actor import Actor
 from dramatiq.composition import group
 from dramatiq.errors import Retry
@@ -23,7 +21,6 @@ from authentik.lib.sync.outgoing.models import OutgoingSyncProvider
 from authentik.lib.utils.errors import exception_to_dict
 from authentik.lib.utils.reflection import class_to_path, path_to_class
 from authentik.lib.utils.time import timedelta_from_string
-from authentik.suse.provider.models import SUSEProviderSyncState
 from authentik.tasks.middleware import CurrentTask
 from authentik.tasks.models import Task
 
@@ -86,8 +83,6 @@ class SyncTasks:
                 self.logger.debug("Failed to acquire sync lock, skipping", provider=provider.name)
                 return
 
-            start_time = now()
-
             try:
                 users_tasks = group(
                     self.sync_paginator(
@@ -119,16 +114,6 @@ class SyncTasks:
 
             if provider.dry_run:
                 return
-
-            with transaction.atomic():
-                sync_state, _ = SUSEProviderSyncState.objects.get_or_create(
-                    provider_id=provider_pk,
-                    defaults={
-                        "last_modify_timestamp": start_time,
-                    },
-                )
-                sync_state.last_modify_timestamp = start_time
-                sync_state.save()
 
     def sync_objects(
         self,

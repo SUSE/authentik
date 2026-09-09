@@ -177,7 +177,13 @@ class SCIMProvider(OutgoingSyncProvider, BackchannelProvider):
         if issubclass(model, User | SCIMProviderUser):
             from authentik.providers.scim.clients.users import SCIMUserClient
 
-            return SCIMUserClient(self)
+            from django.conf import settings
+            from authentik.suse.providers.scim.clients.users import SUSESCIMUserClient
+
+            if getattr(settings, "USE_SUSE_SCIM_CLIENT", False):
+                return SUSESCIMUserClient(self)
+            else:
+                return SCIMUserClient(self)
         if issubclass(model, Group | SCIMProviderGroup):
             from authentik.providers.scim.clients.groups import SCIMGroupClient
 
