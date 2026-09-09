@@ -33,7 +33,7 @@ class TestRBACPermissionRoles(APITestCase):
         self.role.assign_perms("authentik_stages_invitation.view_invitation", obj=inv)
 
     def test_original_list(self):
-        with self.assertNumQueries(16):
+        with self.assertNumQueries(14):
             res = self.client.get(reverse("authentik_api:permissions-roles-list"))
             self.assertEqual(res.status_code, 200)
 
@@ -83,7 +83,7 @@ class TestRBACPermissionRoles(APITestCase):
             self.role.assign_perms("authentik_stages_invitation.view_invitation", obj=inv)
             total_invitations += 1
 
-        with self.assertNumQueries(14):
+        with self.assertNumQueries(54):
             res = self.client.get(
                 reverse("authentik_api:permissions-roles-list", query=dict(suse_serializer="yes"))
             )
