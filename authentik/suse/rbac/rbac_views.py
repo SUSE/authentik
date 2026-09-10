@@ -21,10 +21,10 @@ class SmartRoleObjectPermissionSerializer(PassiveSerializer):
 
     def get_name(self, instance) -> str:
         app_label = instance["content_type__app_label"]
-        model = instance["content_type__model"]
         codename = instance["permission__codename"]
-        object_pk = instance["object_pk"]
-        return f"{app_label}.{codename} on {model}#{object_pk}"
+        name = instance["permission__name"]
+
+        return f"{name} ({app_label}.{codename})"
 
     def get_object_description(self, instance) -> str:
         model = instance["content_type__model"]
@@ -63,6 +63,7 @@ class RolePermissionViewSet(BaseRolePermissionViewSet):
 
         required_fields = [
             "pk",
+            "permission__name",
             "permission__codename",
             "content_type__app_label",
             "content_type__model",
