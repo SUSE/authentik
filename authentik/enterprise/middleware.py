@@ -54,10 +54,6 @@ class EnterpriseMiddleware:
         # Always allow "safe" methods
         if request.method.lower() in ["get", "head", "options", "trace"]:
             return True
-
-        # Exclude SUSE controllers from enterprise constraints
-        if "authentik.suse" in request.resolver_match._func_path:
-            return True
         # Always allow requests to manage licenses
         if request.resolver_match._func_path == class_to_path(LicenseViewSet):
             return True
