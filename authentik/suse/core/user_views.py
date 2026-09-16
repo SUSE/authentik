@@ -1,6 +1,5 @@
 """User API Views"""
 
-from deepmerge import always_merger
 from django.conf import settings
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.models import AnonymousUser
@@ -36,6 +35,7 @@ from authentik.flows.exceptions import FlowNonApplicableException
 from authentik.flows.models import FlowToken
 from authentik.flows.planner import PLAN_CONTEXT_PENDING_USER, FlowPlanner
 from authentik.flows.views.executor import QS_KEY_TOKEN
+from authentik.lib.merge import MERGE_LIST_UNIQUE
 from authentik.rbac.decorators import permission_required
 from authentik.stages.email.flow import pickle_flow_token_for_email
 
@@ -55,7 +55,7 @@ class UserViewSet(BaseUserViewSet):
         # We start with the current user attributes
         final_attributes = instance.attributes
         # merge the provided attributes
-        always_merger.merge(final_attributes, request.data.get("attributes", {}))
+        MERGE_LIST_UNIQUE.merge(final_attributes, request.data.get("attributes", {}))
         # re-assign it
         return final_attributes
 
