@@ -252,6 +252,42 @@ class TestCoreUsersMergeAttributesAPI(APITestCase):
         assert qux == "quax", "Attribute 'qux' did not update"
 
     @override_settings(OVERRIDE_ENDPOINT=dict(core_users_partial_update=True))
+    def test_patch_twice_attribute_list_unique_append(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.patch(
+            reverse("authentik_api:user-detail", kwargs={"pk": self.user.pk}),
+            data=dict(attributes=dict(qux="quax", foo=["bar"])),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        new_bar = self.user.attributes.get("bar")
+        assert new_bar == "baz", "Attribute 'bar' was replaced after PATCH!"
+
+        qux = self.user.attributes.get("qux")
+        assert qux == "quax", "Attribute 'qux' did not update"
+
+        foo = self.user.attributes.get("foo")
+        assert foo == ["bar"], "Attribute 'bar' did not update"
+
+        response = self.client.patch(
+            reverse("authentik_api:user-detail", kwargs={"pk": self.user.pk}),
+            data=dict(attributes=dict(qux="quax", foo=["bar"])),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        new_bar = self.user.attributes.get("bar")
+        assert new_bar == "baz", "Attribute 'bar' was replaced after PATCH!"
+
+        qux = self.user.attributes.get("qux")
+        assert qux == "quax", "Attribute 'qux' did not update"
+
+        foo = self.user.attributes.get("foo")
+        assert foo == ["bar"], "Attribute 'bar' was not uniquely apended (duplicates)"
+
+    @override_settings(OVERRIDE_ENDPOINT=dict(core_users_partial_update=True))
     def test_patch_attributes_wants_to_replace(self):
         self.client.force_login(self.admin)
 
