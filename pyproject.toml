@@ -114,7 +114,8 @@ dev = [
 ]
 
 suse = [
-  "redis ~= 6.0"
+  "redis ~= 6.0",
+  "django-redis ~= 7.0"
 ]
 
 [tool.uv]

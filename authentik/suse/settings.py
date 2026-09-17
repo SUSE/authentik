@@ -109,7 +109,7 @@ if CONFIG.get("suse.cache_backend", "postgres") == "redis":
     # TODO: Do we want multiple location urls? time will tell
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": redis_url,
             "OPTIONS": opts
         }
