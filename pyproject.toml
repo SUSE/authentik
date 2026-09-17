@@ -113,6 +113,10 @@ dev = [
   "types-zxcvbn==4.5.0.20250809",
 ]
 
+suse = [
+  "redis ~= 6.0"
+]
+
 [tool.uv]
 no-binary-package = [
   # This differs from the no-binary packages in the Dockerfile. This is due to the fact
