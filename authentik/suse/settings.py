@@ -99,3 +99,18 @@ OVERRIDE_ENDPOINT: dict[str, bool] = {
 }
 
 USE_SUSE_SCIM_CLIENT = CONFIG.get_bool("suse.use_scim_client", False)
+
+if CONFIG.get("suse.cache_backend", "postgres") == "redis":
+    redis_url = CONFIG.get("suse.redis.url", "")
+    opts = CONFIG.get_dict_from_b64_json("suse.redis.opts", {})
+    if not redis_url:
+        raise RuntimeError("No redis url provided")
+
+    DJANGO_REDIS_CONNECTION_FACTORY = "django_redis.pool.SentinelConnectionFactory"
+    CACHES = {
+        "default": {
+            "BACKEND": "authentik.suse.redis.RedisCache",
+            "LOCATION": redis_url,
+            "OPTIONS": opts,
+        }
+    }
