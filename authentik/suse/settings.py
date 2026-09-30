@@ -90,6 +90,7 @@ known_endpoints = (
     "core_users_partial_update",
     "core_users_recovery_create",
     "core_users_set_password_create",
+    "flows_instances_list",
     "rbac_permissions_roles_list",
 )
 
