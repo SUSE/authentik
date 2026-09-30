@@ -9,30 +9,16 @@ import (
 	"beryju.io/ldap"
 
 	"goauthentik.io/api/v3"
+
 	"goauthentik.io/internal/outpost/ldap/constants"
 	"goauthentik.io/internal/outpost/ldap/utils"
+	"goauthentik.io/internal/outpost/ldap/suse/outpost_config"
 )
 
-func (pi *ProviderInstance) outpostConfig(key string, def string) string {
-	rawVal, ok := pi.s.ac.Outpost.Config["username_attribute_name"]
-	if ok {
-		switch val := rawVal.(type){
-			case string:
-				return val
-		}
-	}
-	return def
-}
+func suseGetPredefinedEntries(pi *ProviderInstance, u api.User) map[string][]string {
+	userNameField := outpost_config.GetKey(pi.s.ac, "UserNameField", "cn")
+	akUidField := outpost_config.GetKey(pi.s.ac, "AKUidField", "uid")
 
-func (pi *ProviderInstance) usernameAttributeName() string {
-	return pi.outpostConfig("username_attr_name", "cn")
-}
-
-func (pi *ProviderInstance) akUidAttributeName() string {
-	return pi.outpostConfig("ak_uid_attr_name", "uid")
-}
-
-func sUSE_getPredefinedEntries(pi *ProviderInstance, u api.User) map[string][]string {
 	return map[string][]string{
 		"ak-user-pk":     {strconv.FormatInt(int64(u.Pk), 10)},
 		"ak-active":      {strings.ToUpper(strconv.FormatBool(*u.IsActive))},
@@ -42,6 +28,8 @@ func sUSE_getPredefinedEntries(pi *ProviderInstance, u api.User) map[string][]st
 		"name":           {u.Name},
 		"displayName":    {u.Name},
 		"mail":           {*u.Email},
+		userNameField:	  {u.Username},
+		akUidField: 	  {u.Uid},
 		"objectClass": {
 			constants.OCTop,
 			constants.OCPerson,
@@ -59,12 +47,32 @@ func sUSE_getPredefinedEntries(pi *ProviderInstance, u api.User) map[string][]st
 		"createTimestamp": {u.DateJoined.In(time.UTC).Format("20060102150405Z")},
 		"modifyTimestamp": {u.LastUpdated.In(time.UTC).Format("20060102150405Z")},
 	}
+}
 
-	userNameField := pi.usernameAttributeName()
-	presetAttrs[userNameField] = []string{u.Username}
+// Copy-paste from the original, kept separate intentionally to prevent an
+// import loop trying to use ProviderInstance (a symbol from
+// goauthentik.io/internal/outpost/ldap) from outside.
+func (pi *ProviderInstance) suseUserEntry(u api.User) *ldap.Entry {
+	dn := pi.GetUserDN(u.Username)
+	attrs := utils.AttributesToLDAP(u.Attributes, func(key string) string {
+		return utils.AttributeKeySanitize(key)
+	}, func(value []string) []string {
+		for i, v := range value {
+			if strings.Contains(v, "%s") {
+				value[i] = fmt.Sprintf(v, u.Username)
+			}
+		}
+		return value
+	})
 
-	akUidField := pi.akUidAttributeName()
-	presetAttrs[akUidField] = []string{u.Uid}
+	if u.IsActive == nil {
+		u.IsActive = api.PtrBool(false)
+	}
+	if u.Email == nil {
+		u.Email = api.PtrString("")
+	}
 
-	attrs = utils.EnsureAttributes(attrs, presetAttrs)
+	predefinedAttrs := suseGetPredefinedEntries(pi, u)
+	attrs = utils.EnsureAttributes(attrs, predefinedAttrs)
+	return &ldap.Entry{DN: dn, Attributes: attrs}
 }
