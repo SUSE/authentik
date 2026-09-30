@@ -21,10 +21,15 @@ import (
 	directsearch "goauthentik.io/internal/outpost/ldap/search/direct"
 	memorysearch "goauthentik.io/internal/outpost/ldap/search/memory"
 	suse_memorysearch "goauthentik.io/internal/outpost/ldap/search/suse_memory"
+	suse_directpksearch "goauthentik.io/internal/outpost/ldap/search/suse_directpksearch"
 )
 
 func useSUSESearcher() bool {
 	return os.Getenv("SUSE_USE_CUSTOM_MEMORY_SEARCHER") == "true"
+}
+
+func useSuseDirectPKSearcher() bool {
+	return os.Getenv("SUSE_USE_CUSTOM_DIRECT_SEARCHER") == "true"
 }
 
 func (ls *LDAPServer) getCurrentProvider(pk int32) *ProviderInstance {
@@ -91,27 +96,39 @@ func (ls *LDAPServer) Refresh() error {
 			providers[idx].cert = ls.cs.Get(*kp)
 			providers[idx].certUUID = *kp
 		}
-		if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
-			var oldSearcher search.Searcher
-			if existing != nil {
-				oldSearcher = existing.searcher
-			}
-			if useSUSESearcher() {
-				providers[idx].searcher = suse_memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
-			} else {
-				providers[idx].searcher = memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
-			}
-		} else if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
-			providers[idx].searcher = directsearch.NewDirectSearcher(providers[idx])
-		}
-		if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
-			var oldBinder bind.Binder
-			if existing != nil {
-				oldBinder = existing.binder
-			}
-			providers[idx].binder = memorybind.NewSessionBinder(providers[idx], oldBinder)
-		} else if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
+
+		if true {
 			providers[idx].binder = directbind.NewDirectBinder(providers[idx])
+			providers[idx].searcher = suse_directpksearch.NewDirectPKSearcher(providers[idx])
+		}
+		if false {
+			if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
+				var oldSearcher search.Searcher
+				if existing != nil {
+					oldSearcher = existing.searcher
+				}
+				if useSUSESearcher() {
+					providers[idx].searcher = suse_memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
+				} else {
+					providers[idx].searcher = memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
+				}
+			} else if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
+
+				if useSuseDirectPKSearcher() {
+					providers[idx].searcher = suse_directpksearch.NewDirectPKSearcher(providers[idx])
+				}else{
+					providers[idx].searcher = directsearch.NewDirectSearcher(providers[idx])
+				}
+			}
+			if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
+				var oldBinder bind.Binder
+				if existing != nil {
+					oldBinder = existing.binder
+				}
+				providers[idx].binder = memorybind.NewSessionBinder(providers[idx], oldBinder)
+			} else if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
+				providers[idx].binder = directbind.NewDirectBinder(providers[idx])
+			}
 		}
 	}
 	ls.providers = providers
