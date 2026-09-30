@@ -3,7 +3,6 @@ package suse_directpksearch
 import (
 	"errors"
 	"fmt"
-	"context"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -94,6 +93,16 @@ func (ds *DirectPKSearcher) Search(req *search.Request) (ldap.ServerSearchResult
 			"app":          ds.si.GetAppSlug(),
 		}).Inc()
 		return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Search Error: error parsing filter: %s", req.Filter)
+	}
+
+	if strings.Contains(req.Filter, "*") {
+		metrics.RequestsRejected.With(prometheus.Labels{
+			"outpost_name": ds.si.GetOutpostName(),
+			"type":         "search",
+			"reason":       "filter_star_not_allowed",
+			"app":          ds.si.GetAppSlug(),
+		}).Inc()
+		return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Search Error: wildcards are not allowed: %s", req.Filter)
 	}
 
 	entries := make([]*ldap.Entry, 0)
@@ -273,30 +282,19 @@ func (ds *DirectPKSearcher) Search(req *search.Request) (ldap.ServerSearchResult
 		}
 	}
 
-	if req.Scope != 0 {
-		metrics.RequestsRejected.With(prometheus.Labels{
-			"outpost_name": ds.si.GetOutpostName(),
-			"type":         "search",
-			"reason":       "disallowed_filter",
-			"app":          ds.si.GetAppSlug(),
-		}).Inc()
+	// if req.Scope != 0 {
+	// 	metrics.RequestsRejected.With(prometheus.Labels{
+	// 		"outpost_name": ds.si.GetOutpostName(),
+	// 		"type":         "search",
+	// 		"reason":       "disallowed_filter",
+	// 		"app":          ds.si.GetAppSlug(),
+	// 	}).Inc()
 
-		return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Search Error: Scope not allowed")
-	}
-
-	if req.Scope != 0 {
-		metrics.RequestsRejected.With(prometheus.Labels{
-			"outpost_name": ds.si.GetOutpostName(),
-			"type":         "search",
-			"reason":       "disallowed_filter",
-			"app":          ds.si.GetAppSlug(),
-		}).Inc()
-
-		return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Search Error: Scope not allowed")
-	}
+	// 	return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Search Error: Scope not allowed")
+	// }
 
 	wantsUsers, wantsSpecificUser := utils.HasSuffixWithMore(req.BaseDN, ds.si.GetBaseUserDN());
-	if !wantsUsers || !wantsSpecificUser {
+	if !wantsUsers {
 		metrics.RequestsRejected.With(prometheus.Labels{
 			"outpost_name": ds.si.GetOutpostName(),
 			"type":         "search",
@@ -307,32 +305,46 @@ func (ds *DirectPKSearcher) Search(req *search.Request) (ldap.ServerSearchResult
 		return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Search Error: Asking for non-users in the base scope")
 	}
 
-	// looks like it's guaranteed for users
-	username, err := ds.GetUsername(req.BaseDN)
-	if err != nil {
-		metrics.RequestsRejected.With(prometheus.Labels{
-			"outpost_name": ds.si.GetOutpostName(),
-			"type":         "search",
-			"reason":       "disallowed_search",
-			"app":          ds.si.GetAppSlug(),
-		}).Inc()
+	username := ""
 
-		return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Search Error: Asking for non-users pk field")
+	if wantsSpecificUser{
+		dnUsername, err := ds.GetUsername(req.BaseDN)
+		if err != nil {
+			metrics.RequestsRejected.With(prometheus.Labels{
+				"outpost_name": ds.si.GetOutpostName(),
+				"type":         "search",
+				"reason":       "disallowed_search",
+				"app":          ds.si.GetAppSlug(),
+			}).Inc()
+
+			return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Search Error: Asking for non-users pk field")
+		}
+
+		username = dnUsername
 	}
 
-	userRequest := ds.si.GetAPIClient().CoreAPI.CoreUsersList(context.TODO()).IncludeGroups(false).IncludeRoles(false).Username(username)
+	client := api.NewAPIClient(ds.si.GetAPIClient().GetConfig())
+	userRequest, skip := utils.SUSE_ParseFilterForUser(client.CoreAPI.CoreUsersList(req.Context()).IncludeGroups(false).IncludeRoles(false), parsedFilter, false)
+	if skip {
+		return ldap.ServerSearchResult{Entries: entries, Referrals: []string{}, Controls: []ldap.Control{}, ResultCode: ldap.LDAPResultSuccess}, nil
+	}
 
-	// TODO: This shouldn't be a paginator, but welp, that's what we have.
-	users, err := ak.Paginator(userRequest, ak.PaginatorOptions{
+	if username != "" {
+		userRequest = userRequest.Username(username)
+	}
+
+	userIterator := ak.PaginatorIterator(userRequest, ak.PaginatorOptions{
 		PageSize: 1,
 		Logger:   ds.log,
 	})
-	if err != nil {
-		// TODO: here if we have cache, we serve cache.
-		return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Error requesting from usptream.")
-	}
-	for _, u := range users {
-		entry := ds.si.UserEntry(u)
+
+
+	for user, err := range userIterator {
+		if err != nil {
+			return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Error requesting from usptream.")
+		}
+
+		entry := ds.si.UserEntry(user)
 		entries = append(entries, entry)
 	}
 
@@ -350,10 +362,10 @@ func (ds *DirectPKSearcher) GetUsername(dn string) (string, error) {
 	}
 	for _, part := range dns.RDNs {
 		for _, attribute := range part.Attributes {
-			if strings.ToLower(attribute.Type) == "cn" {
+			if strings.ToLower(attribute.Type) == "uid" {
 				return attribute.Value, nil
 			}
 		}
 	}
-	return "", errors.New("failed to find cn")
+	return "", errors.New("failed to find uid")
 }
