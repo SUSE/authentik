@@ -8,7 +8,6 @@ import (
 	"goauthentik.io/internal/outpost/ldap/constants"
 )
 
-
 func ParseFilterForUser(req api.ApiCoreUsersListRequest, f *ber.Packet, skip bool) (api.ApiCoreUsersListRequest, bool) {
 	switch f.Tag {
 	case ldap.FilterEqualityMatch:

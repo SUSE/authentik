@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	goldap "github.com/go-ldap/ldap/v3"
+	log "github.com/sirupsen/logrus"
 
 	"beryju.io/ldap"
 	"github.com/getsentry/sentry-go"
@@ -32,7 +32,7 @@ type DirectPKSearcher struct {
 func NewDirectPKSearcher(si server.LDAPServerInstance) *DirectPKSearcher {
 	ds := &DirectPKSearcher{
 		si:  si,
-		ds: directsearch.NewDirectSearcher(si),
+		ds:  directsearch.NewDirectSearcher(si),
 		log: log.WithField("logger", "authentik.outpost.ldap.searcher.suse_direct"),
 	}
 	return ds
@@ -45,7 +45,6 @@ func (ds *DirectPKSearcher) SearchBase(req *search.Request) (ldap.ServerSearchRe
 func (ds *DirectPKSearcher) SearchSubschema(req *search.Request) (ldap.ServerSearchResult, error) {
 	return ds.ds.SearchSubschema(req)
 }
-
 
 func (ds *DirectPKSearcher) Search(req *search.Request) (ldap.ServerSearchResult, error) {
 	accsp := sentry.StartSpan(req.Context(), "authentik.outpost.ldap.searcher.suse_direct")
@@ -105,7 +104,7 @@ func (ds *DirectPKSearcher) Search(req *search.Request) (ldap.ServerSearchResult
 	}
 
 	// this mode won't support groups... at least not yet
-	wantsUsers, wantsSpecificUser := utils.HasSuffixWithMore(req.BaseDN, ds.si.GetBaseUserDN());
+	wantsUsers, wantsSpecificUser := utils.HasSuffixWithMore(req.BaseDN, ds.si.GetBaseUserDN())
 	if !wantsUsers {
 		metrics.RequestsRejected.With(prometheus.Labels{
 			"outpost_name": ds.si.GetOutpostName(),
@@ -134,7 +133,7 @@ func (ds *DirectPKSearcher) Search(req *search.Request) (ldap.ServerSearchResult
 
 		scope -= 1 // Bring it from WholeSubtree to SingleLevel and so on
 	}
-	
+
 	username := ""
 
 	if wantsSpecificUser {
@@ -154,10 +153,10 @@ func (ds *DirectPKSearcher) Search(req *search.Request) (ldap.ServerSearchResult
 	}
 
 	client := api.NewAPIClient(ds.si.GetAPIClient().GetConfig())
-	
+
 	// TODO: figure if group names here make sense
 
-	userRequest, skip := utils.SUSE_ParseFilterForUser(client.CoreAPI.CoreUsersList(req.Context()).IncludeGroups(false).IncludeRoles(false), parsedFilter, false)
+	userRequest, skip := utils.SUSE_ParseFilterForUser(ds.si.GetAPIController(), client.CoreAPI.CoreUsersList(req.Context()).IncludeGroups(false).IncludeRoles(false), parsedFilter, false)
 	if skip {
 		return ldap.ServerSearchResult{Entries: entries, Referrals: []string{}, Controls: []ldap.Control{}, ResultCode: ldap.LDAPResultSuccess}, nil
 	}

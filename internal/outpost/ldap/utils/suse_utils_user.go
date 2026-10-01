@@ -2,14 +2,19 @@ package utils
 
 import (
 	"beryju.io/ldap"
+	"encoding/json"
 	goldap "github.com/go-ldap/ldap/v3"
 	ber "github.com/nmcclain/asn1-ber"
 	"goauthentik.io/api/v3"
-	"encoding/json"
+	"goauthentik.io/internal/outpost/ak"
 	"goauthentik.io/internal/outpost/ldap/constants"
+	"goauthentik.io/internal/outpost/ldap/suse/outpost_config"
 )
 
-func sUSE_parseFilterForUserSingle(req api.ApiCoreUsersListRequest, f *ber.Packet, attrs *map[string]string) (api.ApiCoreUsersListRequest, bool) {
+func sUSE_parseFilterForUserSingle(ac *ak.APIController, req api.ApiCoreUsersListRequest, f *ber.Packet, attrs *map[string]string) (api.ApiCoreUsersListRequest, bool) {
+	configuredMapping := outpost_config.GetKey[map[string]string](ac, "user_attribute_mapping", map[string]string{})
+	mapping := constants.SUSEMergedFieldMapping(configuredMapping)
+
 	// We can only handle key = value pairs here
 	if len(f.Children) < 2 {
 		return req, false
@@ -29,13 +34,17 @@ func sUSE_parseFilterForUserSingle(req api.ApiCoreUsersListRequest, f *ber.Packe
 		return req, false
 	}
 
+	// handle here the configured mapped cases
+	switch mapping[k] {
+	case "username":
+		return req.Username(*val), false
+	}
+
+	// keep the same behavior as upstream
 	switch k {
-	case "uid":
+	case "cn":
 		return req.Username(*val), false
 	case "name":
-		fallthrough
-	case "cn":
-		fallthrough
 	case "displayName":
 		return req.Name(*val), false
 	case "mail":
@@ -62,13 +71,13 @@ func sUSE_parseFilterForUserSingle(req api.ApiCoreUsersListRequest, f *ber.Packe
 	return req, false
 }
 
-func SUSE_ParseFilterForUser_recursive(req api.ApiCoreUsersListRequest, f *ber.Packet, skip bool, attrs *map[string]string) (api.ApiCoreUsersListRequest, bool) {
+func SUSE_ParseFilterForUser_recursive(ac *ak.APIController, req api.ApiCoreUsersListRequest, f *ber.Packet, skip bool, attrs *map[string]string) (api.ApiCoreUsersListRequest, bool) {
 	switch f.Tag {
 	case ldap.FilterEqualityMatch:
-		return sUSE_parseFilterForUserSingle(req, f, attrs)
+		return sUSE_parseFilterForUserSingle(ac, req, f, attrs)
 	case ldap.FilterAnd:
 		for _, child := range f.Children {
-			r, s := SUSE_ParseFilterForUser_recursive(req, child, skip, attrs)
+			r, s := SUSE_ParseFilterForUser_recursive(ac, req, child, skip, attrs)
 			skip = skip || s
 			req = r
 		}
@@ -81,7 +90,7 @@ func SUSE_ParseFilterForUser_recursive(req api.ApiCoreUsersListRequest, f *ber.P
 	return req, skip
 }
 
-func SUSE_ParseFilterForUser(req api.ApiCoreUsersListRequest, f *ber.Packet, skip bool) (api.ApiCoreUsersListRequest, bool) {
+func SUSE_ParseFilterForUser(ac *ak.APIController, req api.ApiCoreUsersListRequest, f *ber.Packet, skip bool) (api.ApiCoreUsersListRequest, bool) {
 	attrs := make(map[string]string)
-	return SUSE_ParseFilterForUser_recursive(req, f, skip, &attrs)
+	return SUSE_ParseFilterForUser_recursive(ac, req, f, skip, &attrs)
 }

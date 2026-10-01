@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +22,7 @@ import (
 	"goauthentik.io/internal/outpost/ldap/search"
 	"goauthentik.io/internal/outpost/ldap/search/direct"
 	"goauthentik.io/internal/outpost/ldap/server"
+	"goauthentik.io/internal/outpost/ldap/suse/outpost_config"
 	"goauthentik.io/internal/outpost/ldap/utils"
 	"goauthentik.io/internal/suse"
 )
@@ -97,8 +97,11 @@ func (ms *MemorySearcher) enrichGroupUsersFromCache(group *api.Group) {
 	group.UsersObj = group.UsersObj[0:used]
 }
 
-func (ms *MemorySearcher) buildUserAPIRequest(pathFilter, rawGroupNames string) (*api.ApiCoreUsersListRequest, error) {
-	if pathFilter == "" && rawGroupNames == "" {
+func (ms *MemorySearcher) buildUserAPIRequest() (*api.ApiCoreUsersListRequest, error) {
+	pathFilter := outpost_config.GetKey[string](ms.si.GetAPIController(), "users_path", "")
+	groupNames := outpost_config.GetKey[[]string](ms.si.GetAPIController(), "users_groups", nil)
+
+	if pathFilter == "" && (groupNames == nil || len(groupNames) == 0) {
 		return nil, fmt.Errorf("Neither SUSE_USER_FILTER_PATH, nor SUSE_USER_FILTER_GROUP_NAMES was provided.")
 	}
 
@@ -108,8 +111,7 @@ func (ms *MemorySearcher) buildUserAPIRequest(pathFilter, rawGroupNames string) 
 		ms.log.WithField("path", pathFilter).Debug("Applying user path filter")
 	}
 
-	if rawGroupNames != "" {
-		groupNames := strings.Split(rawGroupNames, ",")
+	if groupNames != nil && len(groupNames) > 0 {
 		userRequest = userRequest.GroupsByName(groupNames)
 		ms.log.WithField("group-names", groupNames).Debug("Applying user group names filter")
 	}
@@ -117,20 +119,13 @@ func (ms *MemorySearcher) buildUserAPIRequest(pathFilter, rawGroupNames string) 
 	return &userRequest, nil
 }
 
-func (ms *MemorySearcher) buildGroupRequests(rawGroupNames string) ([]api.ApiCoreGroupsListRequest, error) {
-	if rawGroupNames == "" {
+func (ms *MemorySearcher) buildGroupRequests() ([]api.ApiCoreGroupsListRequest, error) {
+	groupNames := outpost_config.GetKey[[]string](ms.si.GetAPIController(), "groups_names", nil)
+	if groupNames != nil {
 		return nil, fmt.Errorf("SUSE_GROUP_FILTER_NAMES was not provided.")
 	}
 
 	groupRequests := []api.ApiCoreGroupsListRequest{}
-	groupNames := []string{}
-
-	for _, name := range strings.Split(rawGroupNames, ",") {
-		name = strings.TrimSpace(name)
-		if name != "" {
-			groupNames = append(groupNames, name)
-		}
-	}
 
 	if len(groupNames) == 0 {
 		return nil, fmt.Errorf("SUSE_GROUP_FILTER_NAMES is effectively empty.")
@@ -145,10 +140,7 @@ func (ms *MemorySearcher) buildGroupRequests(rawGroupNames string) ([]api.ApiCor
 }
 
 func (ms *MemorySearcher) fetchUsers() {
-	pathFilter := strings.TrimSpace(os.Getenv("SUSE_USER_FILTER_PATH"))
-	rawGroupNames := strings.TrimSpace(os.Getenv("SUSE_USER_FILTER_GROUP_NAMES"))
-
-	userRequest, err := ms.buildUserAPIRequest(pathFilter, rawGroupNames)
+	userRequest, err := ms.buildUserAPIRequest()
 	if err != nil {
 		ms.log.WithError(err).Warning("Error building user request filters. Skipped fetching users.")
 		return
@@ -185,8 +177,7 @@ func (ms *MemorySearcher) fetchUsers() {
 }
 
 func (ms *MemorySearcher) fetchGroups() {
-	rawGroupNames := os.Getenv("SUSE_GROUP_FILTER_NAMES")
-	groupRequests, err := ms.buildGroupRequests(rawGroupNames)
+	groupRequests, err := ms.buildGroupRequests()
 	if err != nil {
 		ms.log.WithError(err).Warning("Error building group requests. Skipped fetching groups.")
 		return

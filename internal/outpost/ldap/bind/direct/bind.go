@@ -115,7 +115,7 @@ func (db *DirectBinder) Bind(username string, req *bind.Request) (ldap.LDAPResul
 			req.Log().Debug("Allowed access to search")
 		}
 		uisp.Finish()
-	}else{
+	} else {
 		flags := flags.UserFlags{
 			Session:    nil,
 			SessionJWT: nil,

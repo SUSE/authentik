@@ -6,10 +6,12 @@ import (
 	"beryju.io/ldap"
 
 	"goauthentik.io/api/v3"
+	"goauthentik.io/internal/outpost/ak"
 	"goauthentik.io/internal/outpost/ldap/flags"
 )
 
 type LDAPServerInstance interface {
+	GetAPIController() *ak.APIController
 	GetAPIClient() *api.APIClient
 	GetOutpostName() string
 

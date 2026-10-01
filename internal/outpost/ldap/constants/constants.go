@@ -84,3 +84,27 @@ func GetVirtualGroupOCs() map[string]bool {
 		OCPosixGroup:         true,
 	}
 }
+
+func SUSEDefaultFieldMapping() map[string]string {
+	return map[string]string{
+		"username": "cn",
+		"ak-uid":   "uid",
+	}
+}
+
+func SUSEMergedFieldMapping(configured map[string]string) map[string]string {
+	result := SUSEDefaultFieldMapping()
+	if configured == nil {
+		return result
+	}
+	for k, v := range configured {
+		result[k] = v
+	}
+
+	// now reflect it, this will allow us to look up what USER attribute maps to
+	// what LDAP attribute and vice-versa
+	for k, v := range result {
+		result[v] = k
+	}
+	return result
+}

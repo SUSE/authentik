@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 
@@ -20,17 +19,10 @@ import (
 	"goauthentik.io/internal/outpost/ldap/search"
 	directsearch "goauthentik.io/internal/outpost/ldap/search/direct"
 	memorysearch "goauthentik.io/internal/outpost/ldap/search/memory"
-	suse_memorysearch "goauthentik.io/internal/outpost/ldap/search/suse_memory"
 	suse_directpksearch "goauthentik.io/internal/outpost/ldap/search/suse_directpksearch"
+	suse_memorysearch "goauthentik.io/internal/outpost/ldap/search/suse_memory"
+	"goauthentik.io/internal/outpost/ldap/suse/outpost_config"
 )
-
-func useSUSESearcher() bool {
-	return os.Getenv("SUSE_USE_CUSTOM_MEMORY_SEARCHER") == "true"
-}
-
-func useSuseDirectPKSearcher() bool {
-	return os.Getenv("SUSE_USE_CUSTOM_DIRECT_SEARCHER") == "true"
-}
 
 func (ls *LDAPServer) getCurrentProvider(pk int32) *ProviderInstance {
 	for _, p := range ls.providers {
@@ -42,6 +34,8 @@ func (ls *LDAPServer) getCurrentProvider(pk int32) *ProviderInstance {
 }
 
 func (ls *LDAPServer) Refresh() error {
+	_ = outpost_config.GetKey[string](ls.ac, "foo", "just need a side effect here to keep the line above")
+
 	apiProviders, err := ak.Paginator(ls.ac.Client.OutpostsAPI.OutpostsLdapList(context.Background()), ak.PaginatorOptions{
 		PageSize: 100,
 		Logger:   ls.log,
@@ -107,19 +101,24 @@ func (ls *LDAPServer) Refresh() error {
 				if existing != nil {
 					oldSearcher = existing.searcher
 				}
-				if useSUSESearcher() {
+
+				useSUSECache := true // wip: outpost_config.GetKey[string](ls.ac, "cache_mode", "") == "global"
+
+				if useSUSECache {
 					providers[idx].searcher = suse_memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
 				} else {
 					providers[idx].searcher = memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
 				}
 			} else if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
+				useSUSESearch := true // wip: outpost_config.GetKey[string](ls.ac, "search_mode", "") == "attr_fallback"
 
-				if useSuseDirectPKSearcher() {
+				if useSUSESearch {
 					providers[idx].searcher = suse_directpksearch.NewDirectPKSearcher(providers[idx])
-				}else{
+				} else {
 					providers[idx].searcher = directsearch.NewDirectSearcher(providers[idx])
 				}
 			}
+
 			if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
 				var oldBinder bind.Binder
 				if existing != nil {

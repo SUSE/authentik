@@ -11,13 +11,16 @@ import (
 	"goauthentik.io/api/v3"
 
 	"goauthentik.io/internal/outpost/ldap/constants"
-	"goauthentik.io/internal/outpost/ldap/utils"
 	"goauthentik.io/internal/outpost/ldap/suse/outpost_config"
+	"goauthentik.io/internal/outpost/ldap/utils"
 )
 
 func suseGetPredefinedEntries(pi *ProviderInstance, u api.User) map[string][]string {
-	userNameField := outpost_config.GetKey(pi.s.ac, "UserNameField", "cn")
-	akUidField := outpost_config.GetKey(pi.s.ac, "AKUidField", "uid")
+	configuredMapping := outpost_config.GetKey[map[string]string](pi.s.ac, "user_attribute_mapping", map[string]string{})
+	mapping := constants.SUSEMergedFieldMapping(configuredMapping)
+
+	userNameField := mapping["username"]
+	akUidField := mapping["ak-uid"]
 
 	return map[string][]string{
 		"ak-user-pk":     {strconv.FormatInt(int64(u.Pk), 10)},
@@ -28,8 +31,8 @@ func suseGetPredefinedEntries(pi *ProviderInstance, u api.User) map[string][]str
 		"name":           {u.Name},
 		"displayName":    {u.Name},
 		"mail":           {*u.Email},
-		userNameField:	  {u.Username},
-		akUidField: 	  {u.Uid},
+		userNameField:    {u.Username},
+		akUidField:       {u.Uid},
 		"objectClass": {
 			constants.OCTop,
 			constants.OCPerson,

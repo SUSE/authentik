@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"goauthentik.io/api/v3"
+	"goauthentik.io/internal/outpost/ak"
 	"goauthentik.io/internal/outpost/ldap/bind"
 	ldapConstants "goauthentik.io/internal/outpost/ldap/constants"
 	"goauthentik.io/internal/outpost/ldap/flags"
@@ -42,6 +43,10 @@ type ProviderInstance struct {
 	uidStartNumber int32
 	gidStartNumber int32
 	mfaSupport     bool
+}
+
+func (pi *ProviderInstance) GetAPIController() *ak.APIController {
+	return pi.s.ac
 }
 
 func (pi *ProviderInstance) GetRefreshInterval() time.Duration {

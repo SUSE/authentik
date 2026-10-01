@@ -10,10 +10,16 @@ import (
 
 	"goauthentik.io/api/v3"
 	"goauthentik.io/internal/outpost/ldap/constants"
+	"goauthentik.io/internal/outpost/ldap/suse/outpost_config"
 	"goauthentik.io/internal/outpost/ldap/utils"
 )
 
 func (pi *ProviderInstance) UserEntry(u api.User) *ldap.Entry {
+	useSuseOutpost := outpost_config.GetKey[bool](pi.s.ac, "use_suse_attribute_mapping", false)
+	if useSuseOutpost {
+		return pi.suseUserEntry(u)
+	}
+
 	dn := pi.GetUserDN(u.Username)
 	attrs := utils.AttributesToLDAP(u.Attributes, func(key string) string {
 		return utils.AttributeKeySanitize(key)
