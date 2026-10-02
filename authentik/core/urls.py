@@ -7,7 +7,6 @@ from django.urls import path
 from authentik.core.api.application_entitlements import ApplicationEntitlementViewSet
 from authentik.core.api.authenticated_sessions import AuthenticatedSessionViewSet
 from authentik.core.api.devices import AdminDeviceViewSet, DeviceViewSet
-from authentik.core.api.groups import GroupViewSet
 from authentik.core.api.property_mappings import PropertyMappingViewSet
 from authentik.core.api.providers import ProviderViewSet
 from authentik.core.api.sources import (
@@ -29,6 +28,7 @@ from authentik.root.asgi_middleware import AuthMiddlewareStack
 from authentik.root.middleware import ChannelsLoggingMiddleware
 from authentik.root.ws.consumer import MessageConsumer
 from authentik.suse.core.application_views import ApplicationViewSet
+from authentik.suse.core.group_views import GroupViewSet
 from authentik.suse.core.user_views import UserViewSet
 from authentik.tenants.channels import TenantsAwareMiddleware
 
