@@ -3,7 +3,6 @@
 from django.urls import path
 
 from authentik.flows.api.bindings import FlowStageBindingViewSet
-from authentik.flows.api.flows import FlowViewSet
 from authentik.flows.api.stages import StageViewSet
 from authentik.flows.models import FlowDesignation
 from authentik.flows.views.executor import (
@@ -13,6 +12,7 @@ from authentik.flows.views.executor import (
     ToDefaultFlow,
 )
 from authentik.flows.views.inspector import FlowInspectorView
+from authentik.suse.flows.flow_views import FlowViewSet
 
 urlpatterns = [
     path(

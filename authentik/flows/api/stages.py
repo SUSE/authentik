@@ -16,9 +16,9 @@ from authentik.core.api.object_types import TypesMixin
 from authentik.core.api.used_by import UsedByMixin
 from authentik.core.api.utils import MetaNameSerializer, ModelSerializer
 from authentik.core.types import UserSettingSerializer
-from authentik.flows.api.flows import FlowSetSerializer
 from authentik.flows.models import ConfigurableStage, Stage
 from authentik.lib.utils.reflection import all_subclasses
+from authentik.suse.flows.flow_views import FlowSetSerializer
 
 LOGGER = get_logger()
 
