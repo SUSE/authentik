@@ -1,8 +1,10 @@
-import { CSSResult, html, TemplateResult, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
 import { AKElement } from "#elements/Base";
-import PFBase from "@patternfly/patternfly/patternfly-base.css";
+
+import { CSSResult, html, nothing, TemplateResult } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+
 import PFAlert from "@patternfly/patternfly/components/Alert/alert.css";
+import PFBase from "@patternfly/patternfly/patternfly-base.css";
 
 interface BannerLine {
     text: string;
@@ -11,10 +13,7 @@ interface BannerLine {
 
 @customElement("suse-ak-banner")
 export class Banner extends AKElement {
-    static styles: CSSResult[] = [
-        PFBase,
-        PFAlert
-    ];
+    static styles: CSSResult[] = [PFBase, PFAlert];
 
     @property({ type: String })
     recoveryUrl?: string;
@@ -55,10 +54,10 @@ export class Banner extends AKElement {
         this.bannerType = banner.type || "info";
 
         this.bannerLines = (banner.lines || [])
-            .filter(line => line.text)
-            .map(line => ({
+            .filter((line) => line.text)
+            .map((line) => ({
                 text: line.text,
-                href: line.href || undefined
+                href: line.href || undefined,
             }));
     }
 
