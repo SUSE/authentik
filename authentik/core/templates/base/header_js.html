@@ -5,6 +5,8 @@
     "use strict";
 
     window.custom_banners = JSON.parse("{{ custom_banners | escapejs }}" || "{}")
+    window.custom_user_settings = JSON.parse("{{ custom_user_settings | escapejs }}" || "{}")
+    window.geo_data_url = JSON.parse("{{ geo_data_url | escapejs }}" || "{}")
 
     window.authentik = {
         locale: "{{ LANGUAGE_CODE }}",
