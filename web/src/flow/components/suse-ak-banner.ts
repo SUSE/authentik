@@ -19,6 +19,10 @@ export class Banner extends AKElement {
     @property({ type: String })
     recoveryUrl?: string;
 
+    @property({ type: String })
+    // default to login banner if no object specific one is defined
+    bannerKey = "login";
+
     @state()
     bannerLines: BannerLine[] = [];
 
@@ -28,14 +32,21 @@ export class Banner extends AKElement {
     connectedCallback() {
         super.connectedCallback();
 
-        const banner = window.custom_banners?.login;
+        const banners = window?.custom_banners;
+        if (!banners) {
+            return;
+        }
+
+        const banner = banners[this.bannerKey];
         if (!banner) {
             return;
         }
 
-        if (banner.flows) {
+        const path = window.location.pathname;
+
+        if (banner.flows && path.startsWith("/if/flow/")) {
             // use same logic as flowSlug in FlowExecutor
-            const flow = window.location.pathname.split("/")[3];
+            const flow = path.split("/")[3];
             if (!flow || !banner.flows.includes(flow)) {
                 return;
             }
@@ -75,23 +86,35 @@ export class Banner extends AKElement {
         return html`
             <div class="pf-c-alert pf-m-${this.bannerType} pf-m-inline" aria-label="Banner">
                 <div class="pf-c-alert__icon">
-                    <i class="fas fa-fw ${this.bannerType === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}" aria-hidden="true"></i>
+                    <i
+                        class="fas fa-fw ${this.bannerType === "warning"
+                            ? "fa-exclamation-triangle"
+                            : "fa-info-circle"}"
+                        aria-hidden="true"
+                    ></i>
                 </div>
 
                 <!-- Treat first line as title -->
-                <div class="pf-c-alert__title">
+                <div
+                    class="pf-c-alert__title"
+                    style="${this.bannerLines.length === 1 ? "font-weight: normal;" : ""}"
+                >
                     <span class="sr-only">Info:</span>
                     ${this.#renderLine(this.bannerLines[0])}
                 </div>
 
                 ${this.bannerLines.length > 1
                     ? html`
-                        <div class="pf-c-alert__description">
-                            ${this.bannerLines.slice(1).map((line: BannerLine, index: number, arr: BannerLine[]) => html`
-                                ${this.#renderLine(line)}
-                                ${index < arr.length - 1 ? html`<br />` : nothing}
-                            `)}
-                        </div>
+                          <div class="pf-c-alert__description">
+                              ${this.bannerLines
+                                  .slice(1)
+                                  .map(
+                                      (line: BannerLine, index: number, arr: BannerLine[]) => html`
+                                          ${this.#renderLine(line)}
+                                          ${index < arr.length - 1 ? html`<br />` : nothing}
+                                      `,
+                                  )}
+                          </div>
                       `
                     : nothing}
             </div>
