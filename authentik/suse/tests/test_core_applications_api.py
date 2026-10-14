@@ -110,3 +110,46 @@ class TestApplicationAccessCheck(APITestCase):
         self.assertEqual(response.status_code, 200)
         body = loads(response.content.decode())
         self.assertEqual(body["passing"], False)
+
+
+class TestApplicationList(APITestCase):
+    def setUp(self) -> None:
+        self.user = create_test_user()
+        self.allowed: Application = Application.objects.create(
+            name="allowed",
+            slug="allowed",
+            meta_launch_url="https://goauthentik.io/%(username)s",
+            open_in_new_tab=True,
+        )
+
+        self.denied = Application.objects.create(name="denied", slug="denied")
+        PolicyBinding.objects.create(
+            target=self.allowed,
+            policy=DummyPolicy.objects.create(name="deny", result=True, wait_min=1, wait_max=2),
+            order=0,
+        )
+
+
+    def test_upstream_plain_list_behavior(self):
+        self.client.force_login(self.user)
+
+        with self.assertNumQueries(34):
+            response = self.client.get(reverse("authentik_api:application-list"))
+            self.assertEqual(response.status_code, 200)
+
+        with self.assertNumQueries(29):
+            response = self.client.get(reverse("authentik_api:application-list"))
+            self.assertEqual(response.status_code, 200)
+
+
+    @override_settings(OVERRIDE_ENDPOINT=dict(core_applications_list=True))
+    def test_list_new_cache_less_sql_queries(self):
+        self.client.force_login(self.user)
+
+        with self.assertNumQueries(41):
+            response = self.client.get(reverse("authentik_api:application-list"))
+            self.assertEqual(response.status_code, 200)
+
+        with self.assertNumQueries(26):
+            response = self.client.get(reverse("authentik_api:application-list"))
+            self.assertEqual(response.status_code, 200)
