@@ -1,9 +1,15 @@
 """Application API Views"""
 
+import pglock
 from django.conf import settings
+from django.core.cache import cache
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from guardian.shortcuts import get_objects_for_user
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from structlog.stdlib import get_logger
@@ -16,6 +22,21 @@ from authentik.policies.engine import PolicyEngine
 from authentik.policies.types import PolicyResult
 
 LOGGER = get_logger()
+
+
+
+
+def user_app_lock(user_pk):
+    return pglock.advisory(
+        lock_id=f"suse.com/app_access/suse/{user_pk}",
+        side_effect=pglock.Return,
+    )
+
+def user_app_cache_key(
+    user_pk: str, only_with_launch_url: bool = False
+) -> str:
+    """Cache key where application list for user is saved"""
+    return f"suse.com/app_access/suse/{user_pk}"
 
 
 class ApplicationViewSet(BaseAppViewSet):
@@ -107,3 +128,116 @@ class ApplicationViewSet(BaseAppViewSet):
 
         response = PolicyTestResultSerializer(result)
         return Response(response.data)
+
+
+    def _suse_expand_applications(self, pks):
+        """
+        Re-fetch with proper prefetching for serialization
+        """
+        if not pks:
+            return self.get_queryset().none()
+        return (
+            self.get_queryset()
+            .filter(pk__in=pks)
+        )
+
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="superuser_full_list",
+                location=OpenApiParameter.QUERY,
+                type=OpenApiTypes.BOOL,
+            ),
+            OpenApiParameter(
+                name="for_user",
+                location=OpenApiParameter.QUERY,
+                type=OpenApiTypes.INT,
+            ),
+            OpenApiParameter(
+                name="only_with_launch_url",
+                location=OpenApiParameter.QUERY,
+                type=OpenApiTypes.BOOL,
+            ),
+        ]
+    )
+    def list(self, request: Request) -> Response:
+        if not settings.OVERRIDE_ENDPOINT.get("core_applications_list"):
+            return super().list(request)
+
+        """Custom application list method that evaluates results on cache always"""
+        superuser_full_list = (
+            str(request.query_params.get("superuser_full_list", "false")).lower() == "true"
+        )
+
+        # Super users don't need extra processing. They get the raw app list.
+        if superuser_full_list and request.user.is_superuser:
+            return super().list(request)
+
+        user = self.request.user
+
+        # if for_user is requested, then find out the effective user we wan't to inspect
+        if "for_user" in request.query_params:
+            LOGGER.debug("Verifying for_user param")
+            try:
+                for_user: int = int(request.query_params.get("for_user", 0))
+                for_user = (
+                    get_objects_for_user(request.user, "authentik_core.view_user_applications")
+                    .filter(pk=for_user)
+                    .first()
+                )
+                if not for_user:
+                    raise ValidationError({"for_user": "User not found"})
+            except ValueError as exc:
+                raise ValidationError from exc
+
+            LOGGER.debug("Changing effective user",
+                from_username=user.username, to_username=for_user.username)
+            user = for_user
+
+        # Check the cache
+        allowed_applications = cache.get(
+            user_app_cache_key(user.pk)
+        )
+
+        if allowed_applications is None:
+            LOGGER.debug("Computing application list for user", username=user.username)
+            # When not cached, compute the app list, we'll use locks to
+            # coordinate concurrent requests.
+            queryset = self._filter_queryset_for_list(self.get_queryset())
+
+            with user_app_lock(user.pk):
+                # Compute all access policies
+                allowed_applications = [
+                    app.pk
+                    for app in self._get_allowed_applications(queryset, user=user)
+                ]
+                # Write the cache
+                cache.set(
+                    user_app_cache_key(user.pk),
+                    allowed_applications,
+                    timeout=settings.SUSE_APPLICATION_LIST_CACHE_TTL
+                )
+
+        LOGGER.debug(
+            "Expanding application list [from pk -> object]",
+            application_count=len(allowed_applications)
+        )
+        # expand, apply pagination, and return
+        queryset = self._suse_expand_applications(allowed_applications)
+        return self._render_queryset(request, queryset)
+
+
+    def _render_queryset(self, request, queryset):
+        only_with_launch_url = str(
+            request.query_params.get("only_with_launch_url", "false")
+        ).lower()
+
+        if only_with_launch_url == "true":
+            # apply launch url filters
+            queryset = queryset.exclude(
+                Q(meta_launch_url="", provider__isnull=True) | Q(meta_launch_url="blank://blank")
+            )
+        paged_apps = self.paginator.paginate_queryset(queryset, request)
+        serializer = self.get_serializer(paged_apps, many=True)
+        return self.get_paginated_response(serializer.data)

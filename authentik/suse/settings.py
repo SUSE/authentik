@@ -85,6 +85,7 @@ CONFIG.log(
 # Key   = endpoint name: 'core_applications_check_access_retrieve'
 # Value = True -> Use SUSE version, False -> Use upstream version
 known_endpoints = (
+    "core_applications_list",
     "core_applications_check_access_retrieve",
     "core_users_update",
     "core_users_partial_update",
@@ -104,6 +105,9 @@ USE_SUSE_SCIM_CLIENT = CONFIG.get_bool("suse.use_scim_client", False)
 # SUSE/People/Partners|SUSE/People/Customers|SUSE/People/Community
 SUSE_CUSTOMER_ALLOWED_PATHS = CONFIG.get("suse.customer_allowed_paths", "").split("|")
 SUSE_CUSTOMER_CREATE_PATH = CONFIG.get("suse.customer_create_paths", "")  # "SUSE/People/Customers"
+
+# Default to 1h ttl
+SUSE_APPLICATION_LIST_CACHE_TTL = CONFIG.get_int("suse.application_list_cache_ttl", 3600)
 
 if CONFIG.get("suse.cache_backend", "postgres") == "redis":
     redis_url = CONFIG.get("suse.redis.url", "")

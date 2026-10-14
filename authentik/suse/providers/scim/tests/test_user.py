@@ -11,6 +11,7 @@ from authentik.providers.scim.tasks import scim_sync
 from authentik.suse.providers.scim.clients.users import SUSE_SCIM_LAST_UPDATED_ATTR
 from authentik.tenants.models import Tenant
 
+
 @override_settings(USE_SUSE_SCIM_CLIENT=True)
 class SCIMUserTests(TestCase):
     """SCIM User tests"""
