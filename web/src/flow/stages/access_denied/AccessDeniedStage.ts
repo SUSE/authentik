@@ -1,6 +1,8 @@
 import "#flow/FormStatic";
 import "#flow/components/ak-flow-card";
 
+import { globalAK } from "#common/global";
+
 import { FlowUserDetails } from "#flow/FormStatic";
 import { BaseStage } from "#flow/stages/base";
 
@@ -31,20 +33,86 @@ export class AccessDeniedStage extends BaseStage<
     ];
 
     render(): TemplateResult {
+        let errorConfig = this.challenge?.errorMessage;
+        let errorData;
+        let message;
+        let icon = "fa-times";
+        let title = msg("Request has been denied.");
+        let buttons = null;
+
+        // JSON.parse() will not accept unquoted strings, but we still want to
+        // differentiate between a broken JSON object and a simple string
+        // instead of just assuming a string on all parsing errors
+        if (!(errorConfig.startsWith("{") && errorConfig.endsWith("}"))) {
+            errorConfig = `"${errorConfig}"`;
+        }
+
+        try {
+            errorData = JSON.parse(errorConfig);
+        } catch (error) {
+            console.log(`Failed to parse error data - error: ${error}.`);
+            errorData =
+                "We failed to serve more useful information about this error. This should not happen.";
+        }
+
+        switch (typeof errorData) {
+            case "object":
+                switch (String(errorData.type)) {
+                    case "IncompleteProfile":
+                        message = errorData.message || "";
+                        icon = "fa-user-edit";
+                        title = errorData.title || "Incomplete profile";
+                        buttons = html`
+                            <fieldset class="pf-c-form__group pf-m-action">
+                                <legend class="sr-only">${msg("Form actions")}</legend>
+                                <a
+                                    class="pf-c-button pf-m-primary pf-m-block"
+                                    href="${globalAK().api.base}if/user/#/settings"
+                                >
+                                    Go to profile settings
+                                </a>
+                                <a
+                                    class="pf-c-button pf-m-secondary pf-m-block"
+                                    href="${globalAK().api.base}if/user/#/library"
+                                >
+                                    Go to dashboard
+                                </a>
+                            </fieldset>
+                        `;
+
+                        break;
+
+                    default:
+                        console.log(`Unknown error data type "${errorData.type}".`);
+
+                        break;
+                }
+
+                break;
+
+            case "string":
+                message = errorData;
+
+                break;
+        }
+
         return html`<ak-flow-card .challenge=${this.challenge}>
             <form class="pf-c-form">
                 ${FlowUserDetails({ challenge: this.challenge })}
-                <ak-empty-state icon="fa-times"
-                    ><span>${msg("Request has been denied.")}</span>
-                    ${this.challenge?.errorMessage
+
+                <ak-empty-state icon=${icon}>
+                    <span>${title}</span>
+                    ${errorConfig
                         ? html`
                               <div slot="body">
-                                  <p>${this.challenge?.errorMessage}</p>
+                                  <p>${message}</p>
                               </div>
                           `
                         : nothing}
                 </ak-empty-state>
-                ${this.challenge?.flowInfo?.cancelUrl
+
+                ${buttons ||
+                (this.challenge?.flowInfo?.cancelUrl
                     ? html`<fieldset class="pf-c-form__group pf-m-action">
                           <legend class="sr-only">${msg("Form actions")}</legend>
                           <a
@@ -56,7 +124,7 @@ export class AccessDeniedStage extends BaseStage<
                               })}
                           </a>
                       </fieldset>`
-                    : nothing}
+                    : nothing)}
             </form>
         </ak-flow-card>`;
     }
