@@ -6,9 +6,11 @@ import "#user/user-settings/details/UserPassword";
 import "#user/user-settings/details/UserSettingsFlowExecutor";
 import "#user/user-settings/mfa/MFADevicesPage";
 import "#user/user-settings/tokens/UserTokenList";
+import "#user/user-settings/details/suse-user-settings-flow-executor";
 
 import { DEFAULT_CONFIG } from "#common/api/config";
 import { EVENT_REFRESH } from "#common/constants";
+import { globalAK } from "#common/global";
 
 import { AKSkipToContent } from "#elements/a11y/ak-skip-to-content";
 import { AKElement } from "#elements/Base";
@@ -72,6 +74,10 @@ export class UserSettingsPage extends WithSession(AKElement) {
 
         const { currentUser } = this;
 
+        const baseSlug = globalAK().brand.flowUserSettings;
+        const addressSlug = baseSlug ? `${baseSlug}-address` : undefined;
+        const communitySlug = baseSlug ? `${baseSlug}-community` : undefined;
+
         return html`<div class="pf-c-page">
             <div class="pf-c-page__main">
                 <ak-tabs
@@ -89,18 +95,52 @@ export class UserSettingsPage extends WithSession(AKElement) {
                         class="pf-c-page__main-section pf-m-no-padding-mobile"
                     >
                         <div class="pf-l-stack pf-m-gutter">
-                            <div class="pf-l-stack__item">
-                                <ak-user-settings-flow-executor></ak-user-settings-flow-executor>
-                            </div>
-                            <div class="pf-l-stack__item">
-                                ${pwStage.length > 0
-                                    ? html`<ak-user-settings-password
-                                          configureUrl=${ifDefined(pwStage[0].configureUrl)}
-                                      ></ak-user-settings-password>`
-                                    : nothing}
-                            </div>
+                            <ak-user-settings-flow-executor
+                                class="pf-l-stack__item"
+                            ></ak-user-settings-flow-executor>
+                            ${addressSlug
+                                ? html`
+                                      <suse-user-settings-flow-executor
+                                          class="pf-l-stack__item"
+                                          sectionTitle=${msg("Address details")}
+                                          bannerKey="address"
+                                          .flowSlug=${addressSlug}
+                                      ></suse-user-settings-flow-executor>
+                                  `
+                                : nothing}
+                            ${communitySlug
+                                ? html`
+                                      <suse-user-settings-flow-executor
+                                          class="pf-l-stack__item"
+                                          sectionTitle=${msg("Community details")}
+                                          bannerKey="community"
+                                          .flowSlug=${communitySlug}
+                                      ></suse-user-settings-flow-executor>
+                                  `
+                                : nothing}
                         </div>
                     </div>
+
+                    ${pwStage.length > 0
+                        ? html`
+                              <div
+                                  id="page-password"
+                                  role="tabpanel"
+                                  tabindex="0"
+                                  slot="page-password"
+                                  aria-label=${msg("Password")}
+                                  class="pf-c-page__main-section pf-m-no-padding-mobile"
+                              >
+                                  <div class="pf-l-stack pf-m-gutter">
+                                      <ak-user-settings-password
+                                          class="pf-l-stack__item"
+                                          configureUrl=${ifDefined(pwStage[0].configureUrl)}
+                                      ></ak-user-settings-password>
+                                  </div>
+                              </div>
+                          `
+                        : nothing}
+
                     <div
                         id="page-sessions"
                         role="tabpanel"

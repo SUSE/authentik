@@ -198,7 +198,7 @@ export class UserSettingsFlowExecutor
 
     render(): TemplateResult {
         return html` <div class="pf-c-card">
-            <div class="pf-c-card__title">${msg("Update details")}</div>
+            <div class="pf-c-card__title">${msg("General details")}</div>
             <div class="pf-c-card__body">${this.renderChallengeWrapper()}</div>
         </div>`;
     }
