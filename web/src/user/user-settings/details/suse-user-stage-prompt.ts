@@ -74,17 +74,34 @@ export class SuseUserStagePrompt extends UserSettingsPromptStage {
         const isState = prompt.fieldKey === "attributes.address.state";
         const isCommunity = prompt.fieldKey === "attributes.communityUid";
 
-        if (isCommunity && prompt.initialValue) {
-            return html`
-                <input
-                    type="text"
-                    id=${fieldId}
-                    name=${prompt.fieldKey}
-                    class="pf-c-form-control"
-                    readonly
-                    .value=${prompt.initialValue}
-                />
-            `;
+        if (isCommunity) {
+            if (prompt.initialValue) {
+                return html`
+                    <input
+                        type="text"
+                        id=${fieldId}
+                        name=${prompt.fieldKey}
+                        class="pf-c-form-control"
+                        readonly
+                        .value=${prompt.initialValue}
+                    />
+                `;
+            } else {
+                return html`
+                    <input
+                        type="text"
+                        id=${fieldId}
+                        name=${prompt.fieldKey}
+                        placeholder=${prompt.placeholder || ""}
+                        class="pf-c-form-control"
+                        ?required=${prompt.required}
+                        .value=${prompt.initialValue}
+                        pattern="^[a-zA-Z0-9_.-]{3,}\b$"
+                        title="At least 3 characters. Only letters, numbers, dots, dashes, and underscores allowed."
+                        autocomplete="off"
+                    />
+                `;
+            }
         }
 
         if (isCountry) {
@@ -197,6 +214,11 @@ export class SuseUserStagePrompt extends UserSettingsPromptStage {
                 const isSettingNew = !field?.initialValue && usernameVal !== "";
 
                 if (isSettingNew) {
+                    if (!/^[a-zA-Z0-9_.-]{3,}\b$/.test(usernameVal)) {
+                        this.sectionError = "A community username must consist of at least 3 characters - letters, numbers, dots, dashes, and underscores are allowed, but dashes not at the end.";
+                        return false;
+                    }
+
                     const confirmed = window.confirm(
                         msg(
                             `Are you sure you want to set your community username to "${usernameVal}"?\n\nOnce saved, this information cannot be changed.`,
