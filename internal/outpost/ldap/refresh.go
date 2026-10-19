@@ -14,17 +14,23 @@ import (
 	"goauthentik.io/internal/outpost/ak"
 	"goauthentik.io/internal/outpost/ldap/bind"
 	directbind "goauthentik.io/internal/outpost/ldap/bind/direct"
+	fakebind "goauthentik.io/internal/outpost/ldap/bind/fake"
 	memorybind "goauthentik.io/internal/outpost/ldap/bind/memory"
 	"goauthentik.io/internal/outpost/ldap/constants"
 	"goauthentik.io/internal/outpost/ldap/flags"
 	"goauthentik.io/internal/outpost/ldap/search"
 	directsearch "goauthentik.io/internal/outpost/ldap/search/direct"
 	memorysearch "goauthentik.io/internal/outpost/ldap/search/memory"
+	suse_directsearch "goauthentik.io/internal/outpost/ldap/search/suse_direct"
 	suse_memorysearch "goauthentik.io/internal/outpost/ldap/search/suse_memory"
 )
 
-func useSUSESearcher() bool {
+func useSUSEMemorySearcher() bool {
 	return os.Getenv("SUSE_USE_CUSTOM_MEMORY_SEARCHER") == "true"
+}
+
+func useSUSEDirectSearcher() bool {
+	return os.Getenv("SUSE_USE_CUSTOM_DIRECT_SEARCHER") == "true"
 }
 
 func (ls *LDAPServer) getCurrentProvider(pk int32) *ProviderInstance {
@@ -91,27 +97,38 @@ func (ls *LDAPServer) Refresh() error {
 			providers[idx].cert = ls.cs.Get(*kp)
 			providers[idx].certUUID = *kp
 		}
-		if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
-			var oldSearcher search.Searcher
-			if existing != nil {
-				oldSearcher = existing.searcher
+
+		// TODO(josegomezr): fast manual testing
+		if !true {
+			providers[idx].binder = fakebind.NewDirectBinder(providers[idx])
+			providers[idx].searcher = suse_directsearch.NewDirectSearcher(providers[idx])
+		} else {
+			if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
+				var oldSearcher search.Searcher
+				if existing != nil {
+					oldSearcher = existing.searcher
+				}
+				if useSUSEMemorySearcher() {
+					providers[idx].searcher = suse_memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
+				} else {
+					providers[idx].searcher = memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
+				}
+			} else if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
+				if useSUSEDirectSearcher() {
+					providers[idx].searcher = suse_directsearch.NewDirectSearcher(providers[idx])
+				} else {
+					providers[idx].searcher = directsearch.NewDirectSearcher(providers[idx])
+				}
 			}
-			if useSUSESearcher() {
-				providers[idx].searcher = suse_memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
-			} else {
-				providers[idx].searcher = memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
+			if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
+				var oldBinder bind.Binder
+				if existing != nil {
+					oldBinder = existing.binder
+				}
+				providers[idx].binder = memorybind.NewSessionBinder(providers[idx], oldBinder)
+			} else if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
+				providers[idx].binder = directbind.NewDirectBinder(providers[idx])
 			}
-		} else if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
-			providers[idx].searcher = directsearch.NewDirectSearcher(providers[idx])
-		}
-		if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
-			var oldBinder bind.Binder
-			if existing != nil {
-				oldBinder = existing.binder
-			}
-			providers[idx].binder = memorybind.NewSessionBinder(providers[idx], oldBinder)
-		} else if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
-			providers[idx].binder = directbind.NewDirectBinder(providers[idx])
 		}
 	}
 	ls.providers = providers

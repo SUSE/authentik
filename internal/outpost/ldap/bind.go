@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"goauthentik.io/internal/outpost/ldap/bind"
 	"goauthentik.io/internal/outpost/ldap/metrics"
+	"runtime/debug"
 )
 
 func (ls *LDAPServer) Bind(bindDN string, bindPW string, conn net.Conn) (ldap.LDAPResultCode, error) {
@@ -31,6 +32,7 @@ func (ls *LDAPServer) Bind(bindDN string, bindPW string, conn net.Conn) (ldap.LD
 			return
 		}
 		log.WithError(err.(error)).Error("recover in bind request")
+		debug.PrintStack()
 		sentry.CaptureException(err.(error))
 	}()
 
