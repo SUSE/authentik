@@ -38,7 +38,7 @@ func (db *DirectBinder) GetUsername(dn string) (string, error) {
 	}
 	for _, part := range dns.RDNs {
 		for _, attribute := range part.Attributes {
-			if strings.ToLower(attribute.Type) == "cn" {
+			if strings.ToLower(attribute.Type) == "cn" || strings.ToLower(attribute.Type) == "uid" {
 				return attribute.Value, nil
 			}
 		}
