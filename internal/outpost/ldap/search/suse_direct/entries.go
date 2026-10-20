@@ -13,7 +13,7 @@ import (
 	"goauthentik.io/internal/outpost/ldap/utils"
 )
 
-func userEntry(dn string, u api.User) *ldap.Entry {
+func userEntry(dn string, u api.User, baseDN string) *ldap.Entry {
 	attrs := utils.AttributesToLDAP(u.Attributes, func(key string) string {
 		return utils.AttributeKeySanitize(key)
 	}, func(value []string) []string {
@@ -36,13 +36,11 @@ func userEntry(dn string, u api.User) *ldap.Entry {
 		"ak-user-pk":   {strconv.FormatInt(int64(u.Pk), 10)},
 		"ak-active":    {strings.ToUpper(strconv.FormatBool(*u.IsActive))},
 		"ak-superuser": {strings.ToUpper(strconv.FormatBool(u.IsSuperuser))},
-		// "memberOf":       pi.GroupsForUser(u),
-		"cn":             {u.Username},
-		"sAMAccountName": {u.Username},
-		"uid":            {u.Uid},
-		"name":           {u.Name},
-		"displayName":    {u.Name},
-		"mail":           {*u.Email},
+		"memberOf":     groupEntries(u, baseDN),
+		"uid":          {u.Uid},
+		"name":         {u.Name},
+		"displayName":  {u.Name},
+		"mail":         {*u.Email},
 		"objectClass": {
 			constants.OCTop,
 			constants.OCPerson,
@@ -52,9 +50,6 @@ func userEntry(dn string, u api.User) *ldap.Entry {
 			constants.OCPosixAccount,
 			constants.OCAKUser,
 		},
-		// "uidNumber":       {pi.GetUserUidNumber(u)},
-		// "gidNumber":       {pi.GetUserGidNumber(u)},
-		"homeDirectory":   {fmt.Sprintf("/home/%s", u.Username)},
 		"sn":              {u.Name},
 		"pwdChangedTime":  {u.PasswordChangeDate.In(time.UTC).Format("20060102150405Z")},
 		"createTimestamp": {u.DateJoined.In(time.UTC).Format("20060102150405Z")},
@@ -69,4 +64,14 @@ func userEntry(dn string, u api.User) *ldap.Entry {
 
 	attrs = utils.EnsureAttributes(attrs, presetAttrs)
 	return &ldap.Entry{DN: dn, Attributes: attrs}
+}
+
+func groupEntries(user api.User, baseDN string) []string {
+	groups := make([]string, len(user.Groups))
+	used := 0
+	for _, group := range user.GroupsObj {
+		groups[used] = fmt.Sprintf("cn=%s,ou=groups,%s", group.Name, baseDN)
+		used = used + 1
+	}
+	return groups[0:used]
 }

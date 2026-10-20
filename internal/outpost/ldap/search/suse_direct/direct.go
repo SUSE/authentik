@@ -167,7 +167,8 @@ func (ds *DirectSearcher) Search(req *search.Request) (ldap.ServerSearchResult, 
 
 		dn := ds.GetUserDN(user.Username)
 
-		entry := userEntry(dn, user)
+		entry := userEntry(dn, user, ds.si.GetBaseDN())
+
 		entries = append(entries, entry)
 		break
 	}
