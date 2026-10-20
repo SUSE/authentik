@@ -98,37 +98,31 @@ func (ls *LDAPServer) Refresh() error {
 			providers[idx].certUUID = *kp
 		}
 
-		// TODO(josegomezr): fast manual testing
-		if !true {
-			providers[idx].binder = fakebind.NewDirectBinder(providers[idx])
-			providers[idx].searcher = suse_directsearch.NewDirectSearcher(providers[idx])
-		} else {
-			if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
-				var oldSearcher search.Searcher
-				if existing != nil {
-					oldSearcher = existing.searcher
-				}
-				if useSUSEMemorySearcher() {
-					providers[idx].searcher = suse_memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
-				} else {
-					providers[idx].searcher = memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
-				}
-			} else if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
-				if useSUSEDirectSearcher() {
-					providers[idx].searcher = suse_directsearch.NewDirectSearcher(providers[idx])
-				} else {
-					providers[idx].searcher = directsearch.NewDirectSearcher(providers[idx])
-				}
+		if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
+			var oldSearcher search.Searcher
+			if existing != nil {
+				oldSearcher = existing.searcher
 			}
-			if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
-				var oldBinder bind.Binder
-				if existing != nil {
-					oldBinder = existing.binder
-				}
-				providers[idx].binder = memorybind.NewSessionBinder(providers[idx], oldBinder)
-			} else if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
-				providers[idx].binder = directbind.NewDirectBinder(providers[idx])
+			if useSUSEMemorySearcher() {
+				providers[idx].searcher = suse_memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
+			} else {
+				providers[idx].searcher = memorysearch.NewMemorySearcher(providers[idx], oldSearcher)
 			}
+		} else if *provider.SearchMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
+			if useSUSEDirectSearcher() {
+				providers[idx].searcher = suse_directsearch.NewDirectSearcher(providers[idx])
+			} else {
+				providers[idx].searcher = directsearch.NewDirectSearcher(providers[idx])
+			}
+		}
+		if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_CACHED {
+			var oldBinder bind.Binder
+			if existing != nil {
+				oldBinder = existing.binder
+			}
+			providers[idx].binder = memorybind.NewSessionBinder(providers[idx], oldBinder)
+		} else if *provider.BindMode.Ptr() == api.LDAPAPIACCESSMODE_DIRECT {
+			providers[idx].binder = directbind.NewDirectBinder(providers[idx])
 		}
 	}
 	ls.providers = providers
