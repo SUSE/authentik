@@ -97,7 +97,7 @@ func (ds *DirectSearcher) Search(req *search.Request) (ldap.ServerSearchResult, 
 
 	entries := make([]*ldap.Entry, 0)
 
-	if req.Scope != 1 {
+	if req.Scope != ldap.ScopeSingleLevel && req.Scope != ldap.ScopeWholeSubtree {
 		metrics.RequestsRejected.With(prometheus.Labels{
 			"outpost_name": ds.si.GetOutpostName(),
 			"type":         "search",
