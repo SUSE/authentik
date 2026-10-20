@@ -186,7 +186,7 @@ func (ds *DirectSearcher) GetUsername(dn string) (string, error) {
 	}
 	for _, part := range dns.RDNs {
 		for _, attribute := range part.Attributes {
-			if strings.ToLower(attribute.Type) == "uid" {
+			if strings.ToLower(attribute.Type) == "uid" || strings.ToLower(attribute.Type) == "cn" {
 				return attribute.Value, nil
 			}
 		}
@@ -194,6 +194,9 @@ func (ds *DirectSearcher) GetUsername(dn string) (string, error) {
 	return "", errors.New("failed to find uid")
 }
 
+// Important note: this must match the logic in internal/outpost/ldap/bind.go:40
+// and
+// internal/outpost/ldap/bind/direct/direct.go
 func (ds *DirectSearcher) GetUserDN(user string) string {
 	return fmt.Sprintf("uid=%s,%s", user, ds.si.GetBaseUserDN())
 }
