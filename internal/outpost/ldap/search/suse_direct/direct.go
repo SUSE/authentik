@@ -108,7 +108,7 @@ func (ds *DirectSearcher) Search(req *search.Request) (ldap.ServerSearchResult, 
 		return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Search Error: Scope not allowed")
 	}
 
-	wantsUsers, wantsSpecificUser := utils.HasSuffixWithMore(req.BaseDN, ds.si.GetBaseUserDN())
+	wantsUsers, _ := utils.HasSuffixWithMore(req.BaseDN, ds.si.GetBaseUserDN())
 	if !wantsUsers {
 		metrics.RequestsRejected.With(prometheus.Labels{
 			"outpost_name": ds.si.GetOutpostName(),
@@ -120,39 +120,13 @@ func (ds *DirectSearcher) Search(req *search.Request) (ldap.ServerSearchResult, 
 		return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Search Error: Asking for non-users in the base scope")
 	}
 
-	username := ""
-
-	if wantsSpecificUser {
-		dnUsername, err := ds.GetUsername(req.BaseDN)
-		if err != nil {
-			metrics.RequestsRejected.With(prometheus.Labels{
-				"outpost_name": ds.si.GetOutpostName(),
-				"type":         "search",
-				"reason":       "disallowed_search",
-				"app":          ds.si.GetAppSlug(),
-			}).Inc()
-
-			return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Search Error: Asking for non-users pk field")
-		}
-
-		username = dnUsername
-	}
-
-	userRequest := ds.si.GetAPIClient().CoreAPI.CoreUsersList(context.TODO()).IncludeGroups(true).IncludeRoles(false)
-	if username != "" {
-		userRequest = userRequest.Username(username)
-	}
-
 	client := api.NewAPIClient(ds.si.GetAPIClient().GetConfig())
 	client.GetConfig().AddDefaultHeader("X-authentik-outpost-ldap-query", req.Filter)
 
+	userRequest := ds.si.GetAPIClient().CoreAPI.CoreUsersList(context.TODO()).IncludeGroups(true).IncludeRoles(false)
 	userRequest, skip := parseFilterForUser(userRequest, parsedFilter, false)
 	if skip {
 		return ldap.ServerSearchResult{Entries: entries, Referrals: []string{}, Controls: []ldap.Control{}, ResultCode: ldap.LDAPResultSuccess}, nil
-	}
-
-	if username != "" {
-		userRequest = userRequest.Username(username)
 	}
 
 	userIterator := ak.PaginatorIterator(userRequest, ak.PaginatorOptions{
@@ -162,13 +136,21 @@ func (ds *DirectSearcher) Search(req *search.Request) (ldap.ServerSearchResult, 
 
 	for user, err := range userIterator {
 		if err != nil {
-			return ldap.ServerSearchResult{ResultCode: ldap.LDAPResultOperationsError}, fmt.Errorf("Error requesting from usptream.")
+			// Here we can't know without de-gutting the err object and reading that
+			// `err.model.AdditionalProperties[*] is present to discern between
+			// a _real_ error or a group-not found error.
+			// Returning empty result and logging a message instead.
+			switch apiErr := err.(type) {
+			case *api.GenericOpenAPIError:
+				req.Log().WithError(err).WithField("error-body", string(apiErr.Body())).Info("API Validation error from upstream")
+			default:
+				req.Log().WithError(err).Info("Error querying upstream")
+			}
+			return ldap.ServerSearchResult{Entries: entries, Referrals: []string{}, Controls: []ldap.Control{}, ResultCode: ldap.LDAPResultSuccess}, nil
 		}
 
 		dn := ds.GetUserDN(user.Username)
-
 		entry := userEntry(dn, user, ds.si.GetBaseDN())
-
 		entries = append(entries, entry)
 		break
 	}
@@ -191,7 +173,7 @@ func (ds *DirectSearcher) GetUsername(dn string) (string, error) {
 			}
 		}
 	}
-	return "", errors.New("failed to find uid")
+	return "", errors.New("failed to find username from request dn")
 }
 
 // Important note: this must match the logic in internal/outpost/ldap/bind.go:40
