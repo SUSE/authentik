@@ -101,6 +101,10 @@ OVERRIDE_ENDPOINT: dict[str, bool] = {
 
 USE_SUSE_SCIM_CLIENT = CONFIG.get_bool("suse.use_scim_client", False)
 
+# SUSE/People/Partners|SUSE/People/Customers|SUSE/People/Community
+SUSE_CUSTOMER_ALLOWED_PATHS = CONFIG.get("suse.customer_allowed_paths", "").split("|")
+SUSE_CUSTOMER_CREATE_PATH = CONFIG.get("suse.customer_create_paths", "")  # "SUSE/People/Customers"
+
 if CONFIG.get("suse.cache_backend", "postgres") == "redis":
     redis_url = CONFIG.get("suse.redis.url", "")
     opts = CONFIG.get_dict_from_b64_json("suse.redis.opts", {})
