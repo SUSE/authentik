@@ -113,5 +113,5 @@ class AuthenticatedSessionViewSet(
     serializer_class = AuthenticatedSessionSerializer
     search_fields = ["user__username", "session__last_ip", "session__last_user_agent"]
     filterset_fields = ["user__username", "session__last_ip", "session__last_user_agent"]
-    ordering = ["user__username"]
+    ordering = ["user__username", "session__expires", "session__last_used"]
     owner_field = "user"
