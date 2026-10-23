@@ -32,6 +32,7 @@ from authentik.core.models import Group, User
 from authentik.endpoints.connectors.agent.auth import AgentAuth
 from authentik.rbac.api.roles import RoleSerializer
 from authentik.rbac.decorators import permission_required
+from authentik.suse import validations
 
 PARTIAL_USER_SERIALIZER_MODEL_FIELDS = [
     "pk",
@@ -358,6 +359,9 @@ class GroupViewSet(UsedByMixin, ModelViewSet):
         )
         if not user:
             raise Http404
+
+        validations.user_in_allowed_rdns(group, user)
+
         group.users.add(user)
         return Response(status=204)
 
