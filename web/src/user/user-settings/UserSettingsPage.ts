@@ -6,6 +6,7 @@ import "#user/user-settings/details/UserPassword";
 import "#user/user-settings/details/UserSettingsFlowExecutor";
 import "#user/user-settings/mfa/MFADevicesPage";
 import "#user/user-settings/tokens/UserTokenList";
+import "#user/user-settings/details/suse-user-settings-flow-executor";
 
 import { DEFAULT_CONFIG } from "#common/api/config";
 import { EVENT_REFRESH } from "#common/constants";
@@ -66,6 +67,8 @@ export class UserSettingsPage extends WithSession(AKElement) {
     }
 
     render(): TemplateResult {
+        const customConfig = window?.custom_user_settings || {};
+
         const pwStage =
             this.userSettings?.filter((stage) => stage.component === "ak-user-settings-password") ||
             [];
@@ -89,18 +92,42 @@ export class UserSettingsPage extends WithSession(AKElement) {
                         class="pf-c-page__main-section pf-m-no-padding-mobile"
                     >
                         <div class="pf-l-stack pf-m-gutter">
-                            <div class="pf-l-stack__item">
-                                <ak-user-settings-flow-executor></ak-user-settings-flow-executor>
-                            </div>
-                            <div class="pf-l-stack__item">
-                                ${pwStage.length > 0
-                                    ? html`<ak-user-settings-password
-                                          configureUrl=${ifDefined(pwStage[0].configureUrl)}
-                                      ></ak-user-settings-password>`
-                                    : nothing}
-                            </div>
+                            <ak-user-settings-flow-executor
+                                class="pf-l-stack__item"
+                            ></ak-user-settings-flow-executor>
+                            ${customConfig?.sections?.map(
+                                (section) => html`
+                                    <suse-user-settings-flow-executor
+                                        class="pf-l-stack__item"
+                                        sectionTitle=${section.title}
+                                        bannerKey=${section.bannerKey}
+                                        .flowSlug=${section.flowSlug}
+                                    ></suse-user-settings-flow-executor>
+                                `,
+                            )}
                         </div>
                     </div>
+
+                    ${pwStage.length > 0
+                        ? html`
+                              <div
+                                  id="page-password"
+                                  role="tabpanel"
+                                  tabindex="0"
+                                  slot="page-password"
+                                  aria-label=${msg("Password")}
+                                  class="pf-c-page__main-section pf-m-no-padding-mobile"
+                              >
+                                  <div class="pf-l-stack pf-m-gutter">
+                                      <ak-user-settings-password
+                                          class="pf-l-stack__item"
+                                          configureUrl=${ifDefined(pwStage[0].configureUrl)}
+                                      ></ak-user-settings-password>
+                                  </div>
+                              </div>
+                          `
+                        : nothing}
+
                     <div
                         id="page-sessions"
                         role="tabpanel"
