@@ -12,6 +12,7 @@ from drf_spectacular.utils import (
 )
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.fields import SerializerMethodField
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -20,6 +21,7 @@ from structlog.stdlib import get_logger
 from authentik.api.validation import validate
 from authentik.brands.models import Brand
 from authentik.core.api.users import UserPasswordSetSerializer
+from authentik.core.api.users import UserSerializer as BaseUserSerializer
 from authentik.core.api.users import UserViewSet as BaseUserViewSet
 from authentik.core.api.utils import (
     LinkSerializer,
@@ -49,7 +51,47 @@ def first(iter):
         return None
 
 
+class UserSerializer(BaseUserSerializer):
+    def _empty_list(self, _):
+        return []
+
+    def _always_false(self, _):
+        return False
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if not settings.OVERRIDE_ENDPOINT.get("core_users_list"):
+            return
+
+        request = self.context.get("request")
+        if not request:
+            return
+
+        if request.headers.get("X-SUSE-API-Users-Expand-Group-Objects") == "false":
+            self.fields["groups_obj"] = SerializerMethodField(method_name="_empty_list")
+
+        if request.headers.get("X-SUSE-API-Users-Expand-Role-Objects") == "false":
+            self.fields["roles_obj"] = SerializerMethodField(method_name="_empty_list")
+
+        if request.headers.get("X-SUSE-API-Users-Expand-SuperUser") == "false":
+            self.fields["is_superuser"] = SerializerMethodField(method_name="_always_false")
+
+
 class UserViewSet(BaseUserViewSet):
+    serializer_class = UserSerializer
+
+    # These are optimized by DRF to
+    def get_queryset(self):
+        base_qs = super().get_queryset()
+
+        if not settings.OVERRIDE_ENDPOINT.get("core_users_list"):
+            return base_qs
+
+        # prefetch parents & children, they're always rendered as they're in the
+        # serializer
+        return base_qs.prefetch_related("groups").prefetch_related("roles")
+
     def _get_merged_attributes(self, request):
         instance = self.get_object()
         # We start with the current user attributes
