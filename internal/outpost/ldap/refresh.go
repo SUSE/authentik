@@ -14,7 +14,6 @@ import (
 	"goauthentik.io/internal/outpost/ak"
 	"goauthentik.io/internal/outpost/ldap/bind"
 	directbind "goauthentik.io/internal/outpost/ldap/bind/direct"
-	fakebind "goauthentik.io/internal/outpost/ldap/bind/fake"
 	memorybind "goauthentik.io/internal/outpost/ldap/bind/memory"
 	"goauthentik.io/internal/outpost/ldap/constants"
 	"goauthentik.io/internal/outpost/ldap/flags"
