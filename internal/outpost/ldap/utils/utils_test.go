@@ -107,7 +107,6 @@ func TestAKAttrsToLDAP_Mixed(t *testing.T) {
 	assert.Equal(t, []string{"foo", "6"}, mapped[0].Values)
 }
 
-
 func TestAKNestedAttrsToLDAP_onelevel(t *testing.T) {
 	// dict
 	d := map[string]interface{}{
