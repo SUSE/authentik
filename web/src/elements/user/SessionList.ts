@@ -34,9 +34,9 @@ export class AuthenticatedSessionList extends Table<AuthenticatedSession> {
     }
 
     protected columns: TableColumn[] = [
-        [msg("Last IP"), "last_ip"],
-        [msg("Last used"), "last_used"],
-        [msg("Expires"), "expires"],
+        [msg("Last IP"), "session__last_ip"],
+        [msg("Last used"), "session__last_used"],
+        [msg("Expires"), "session__expires"],
     ];
 
     renderToolbarSelected(): TemplateResult {
