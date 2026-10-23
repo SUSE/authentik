@@ -47,7 +47,7 @@ func PaginatorIterator[Tobj any, Treq any, Tres PaginatorResponse[Tobj]](
 				var empty Tobj
 				yield(empty, err)
 				return
-				// original logic: No idea why this was collecting errros, if it'd be either ignored or just be collecting errors to fail (?)
+				// original logic: No idea why this was collecting errors, if it'd be either ignored or just be collecting errors to fail (?)
 			}
 
 			for _, item := range apiObjects.GetResults() {
