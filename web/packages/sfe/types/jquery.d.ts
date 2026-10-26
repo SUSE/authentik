@@ -20,6 +20,7 @@ declare module "jquery" {
         getElement(): TElement;
         getText(): string;
         submit(): void;
+        appendTo(target: string): JQuery<TElement>;
         val(value: string): JQuery<TElement>;
         html(html: string): JQuery<TElement>;
         addClass(className: string): JQuery<TElement>;
