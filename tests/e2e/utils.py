@@ -52,9 +52,14 @@ def get_local_ip(override=True) -> str:
     """Get the local machine's IP"""
     if (local_ip := getenv("LOCAL_IP")) and override:
         return local_ip
-    hostname = socket.gethostname()
-    ip_addr = socket.gethostbyname(hostname)
-    return ip_addr
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(0)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.254.254.254', 1))
+        return s.getsockname()[0]
+    finally:
+        s.close()
 
 
 class SeleniumTestCase(DockerTestCase, StaticLiveServerTestCase):
