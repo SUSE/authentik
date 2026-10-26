@@ -50,7 +50,8 @@ export const ThemedImage: LitFC<ThemedImageProps> = ({
     }
 
     // Use themed URL if available, otherwise use src directly
-    const resolvedSrc = (themedUrls as Record<string, string> | null)?.[theme] ?? themeImage(src, theme);
+    const resolvedSrc =
+        (themedUrls as Record<string, string> | null)?.[theme] ?? themeImage(src, theme);
 
     return html`<img src=${resolvedSrc} class=${ifPresent(className)} ${spread(props)} />`;
 };

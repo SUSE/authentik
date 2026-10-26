@@ -1,8 +1,11 @@
-import { CSSResult, html, TemplateResult, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import { AuthentikWindow } from "#common/global";
 import { AKElement } from "#elements/Base";
-import PFBase from "@patternfly/patternfly/patternfly-base.css";
+
+import { CSSResult, html, nothing, TemplateResult } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+
 import PFAlert from "@patternfly/patternfly/components/Alert/alert.css";
+import PFBase from "@patternfly/patternfly/patternfly-base.css";
 
 interface BannerLine {
     text: string;
@@ -11,10 +14,7 @@ interface BannerLine {
 
 @customElement("suse-ak-banner")
 export class Banner extends AKElement {
-    static styles: CSSResult[] = [
-        PFBase,
-        PFAlert
-    ];
+    static styles: CSSResult[] = [PFBase, PFAlert];
 
     @property({ type: String })
     recoveryUrl?: string;
@@ -23,12 +23,13 @@ export class Banner extends AKElement {
     bannerLines: BannerLine[] = [];
 
     @state()
-    bannerType: string;
+    bannerType: string = "info";
 
     connectedCallback() {
         super.connectedCallback();
 
-        const banner = window.custom_banners?.login;
+        const akWin = window as AuthentikWindow
+        const banner = akWin.custom_banners?.login;
         if (!banner) {
             return;
         }
@@ -44,10 +45,10 @@ export class Banner extends AKElement {
         this.bannerType = banner.type || "info";
 
         this.bannerLines = (banner.lines || [])
-            .filter(line => line.text)
-            .map(line => ({
+            .filter((line) => line.text)
+            .map((line) => ({
                 text: line.text,
-                href: line.href || undefined
+                href: line.href || undefined,
             }));
     }
 
@@ -75,7 +76,12 @@ export class Banner extends AKElement {
         return html`
             <div class="pf-c-alert pf-m-${this.bannerType} pf-m-inline" aria-label="Banner">
                 <div class="pf-c-alert__icon">
-                    <i class="fas fa-fw ${this.bannerType === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}" aria-hidden="true"></i>
+                    <i
+                        class="fas fa-fw ${this.bannerType === "warning"
+                            ? "fa-exclamation-triangle"
+                            : "fa-info-circle"}"
+                        aria-hidden="true"
+                    ></i>
                 </div>
 
                 <!-- Treat first line as title -->
@@ -86,12 +92,16 @@ export class Banner extends AKElement {
 
                 ${this.bannerLines.length > 1
                     ? html`
-                        <div class="pf-c-alert__description">
-                            ${this.bannerLines.slice(1).map((line: BannerLine, index: number, arr: BannerLine[]) => html`
-                                ${this.#renderLine(line)}
-                                ${index < arr.length - 1 ? html`<br />` : nothing}
-                            `)}
-                        </div>
+                          <div class="pf-c-alert__description">
+                              ${this.bannerLines
+                                  .slice(1)
+                                  .map(
+                                      (line: BannerLine, index: number, arr: BannerLine[]) => html`
+                                          ${this.#renderLine(line)}
+                                          ${index < arr.length - 1 ? html`<br />` : nothing}
+                                      `,
+                                  )}
+                          </div>
                       `
                     : nothing}
             </div>

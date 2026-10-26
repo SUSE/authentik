@@ -28,7 +28,19 @@ export interface GlobalAuthentik {
     };
 }
 
+export interface BannerLines {
+    text?: string
+    href?: string
+}
+
+export interface CustomBanner {
+    flows?: Array<string>
+    type ?: string
+    lines ?: Array<string>
+}
+
 export interface AuthentikWindow {
+    custom_banners?: Map<string, CustomBanner>
     authentik: GlobalAuthentik;
 }
 

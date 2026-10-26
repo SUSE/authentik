@@ -22,6 +22,7 @@ import {
 import { msg } from "@lit/localize";
 import { css, CSSResult, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
+import { ifDefined } from 'lit/directives/if-defined.js';
 
 import PFButton from "@patternfly/patternfly/components/Button/button.css";
 import PFForm from "@patternfly/patternfly/components/Form/form.css";
@@ -173,7 +174,7 @@ export class AuthenticatorTOTPStage extends BaseStage<
                                 id="totp-secret"
                                 class="pf-c-form-control pf-m-monospace"
                                 type="text"
-                                value="${totpParams.get("secret")}"
+                                value="${ifDefined(totpParams.get("secret") || undefined)}"
                                 readonly
                             />
                             ${AKLabel(
@@ -188,7 +189,7 @@ export class AuthenticatorTOTPStage extends BaseStage<
                                 id="totp-algo"
                                 class="pf-c-form-control pf-m-monospace"
                                 type="text"
-                                value="${totpParams.get("algorithm")}"
+                                value="${ifDefined(totpParams.get("algorithm") || undefined)}"
                                 readonly
                             />
                             ${AKLabel(
@@ -203,7 +204,7 @@ export class AuthenticatorTOTPStage extends BaseStage<
                                 id="totp-issuer"
                                 class="pf-c-form-control pf-m-monospace"
                                 type="text"
-                                value="${totpParams.get("issuer")}"
+                                value="${ifDefined(totpParams.get("issuer") || undefined)}"
                                 readonly
                             />
                             ${AKLabel(
@@ -218,7 +219,7 @@ export class AuthenticatorTOTPStage extends BaseStage<
                                 id="totp-period"
                                 class="pf-c-form-control pf-m-monospace"
                                 type="text"
-                                value="${totpParams.get("period")}"
+                                value="${ifDefined(totpParams.get("period") || undefined)}"
                                 readonly
                             />
                             ${AKLabel(
@@ -233,7 +234,7 @@ export class AuthenticatorTOTPStage extends BaseStage<
                                 id="totp-digits"
                                 class="pf-c-form-control pf-m-monospace"
                                 type="text"
-                                value="${totpParams.get("digits")}"
+                                value="${ifDefined(totpParams.get("digits") || undefined)}"
                                 readonly
                             />
                             <div style="text-align: center; margin: 10px 0;">
