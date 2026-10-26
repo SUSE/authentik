@@ -234,6 +234,10 @@ class SUSECustomersViewSet(
     filter_backends = []
     permission_classes = [permissions.IsAuthenticated]
 
+    search_fields = ["name", "path", "username", "uuid", "email"]
+    filterset_fields = ["name", "path", "username", "uuid", "email"]
+    ordering = ["username", "date_joined", "last_updated"]
+
     def get_serializer_class(self):
         if self.request.method == "POST":
             return CreateCustomerSerializer
