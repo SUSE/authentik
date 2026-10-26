@@ -1,7 +1,12 @@
 import uuid
 
 from django.conf import settings
+from django.contrib.auth.models import AnonymousUser
 from django.db.utils import IntegrityError
+from django.urls import reverse_lazy
+from django.utils.http import urlencode
+from django.utils.timezone import now
+from django.utils.translation import gettext as _
 from django_countries.serializer_fields import CountryField
 from email_validator import (
     EmailNotValidError,
@@ -15,9 +20,16 @@ from rest_framework.status import HTTP_409_CONFLICT
 from rest_framework.validators import UniqueValidator
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
-from authentik.core.models import User
+from authentik.core.models import Token, User
+from authentik.flows.exceptions import FlowNonApplicableException
+from authentik.flows.models import Flow, FlowToken
+from authentik.flows.planner import PLAN_CONTEXT_PENDING_USER, FlowPlanner
+from authentik.flows.views.executor import QS_KEY_TOKEN
 from authentik.rbac.decorators import permission_required
-from authentik.suse.api_extensions.utils import DjangoResolverCache
+from authentik.stages.email.flow import pickle_flow_token_for_email
+from authentik.stages.email.tasks import send_mails
+from authentik.stages.email.utils import TemplateEmailMessage
+from authentik.suse.api_extensions.utils import DjangoResolverCache, first
 
 
 class ConflictError(ValidationError):
@@ -187,7 +199,49 @@ class CreateCustomerSerializer(CustomerSerializer):
         validators=[UniqueValidator(queryset=User.objects.all(), lookup="iexact")],
     )
 
+    def _create_welcome_link(self, user: User, flow: Flow) -> tuple[str, Token]:
+        planner = FlowPlanner(flow)
+        planner.allow_empty_flows = True
+        original_user = self.context["request"].user
+        self.context["request"]._request.user = AnonymousUser()
+        try:
+            plan = planner.plan(
+                self.context["request"]._request,
+                {
+                    PLAN_CONTEXT_PENDING_USER: user,
+                },
+            )
+        except FlowNonApplicableException:
+            raise ValidationError(
+                {"non_field_errors": "Welcome flow not applicable to user"}
+            ) from None
+        finally:
+            self.context["request"]._request.user = original_user
+
+        _plan = pickle_flow_token_for_email(plan)
+        token, __ = FlowToken.objects.update_or_create(
+            identifier=f"{user.uid}-password-reset",
+            defaults={
+                "user": user,
+                "flow": flow,
+                "_plan": _plan,
+                "revoke_on_execution": True,
+                "expires": now() + settings.SUSE_WELCOME_EXPIRATION,
+            },
+        )
+        querystring = urlencode({QS_KEY_TOKEN: token.key})
+        link = self.context["request"].build_absolute_uri(
+            reverse_lazy("authentik_core:if-flow", kwargs={"flow_slug": flow.slug})
+            + f"?{querystring}"
+        )
+        return link, token
+
     def create(self, validated_data: dict) -> User:
+        flow = first(Flow.objects.filter(slug=settings.SUSE_WELCOME_FLOW))
+
+        if not flow:
+            raise ValidationError({"non_field_errors": _("No welcome flow set.")})
+
         user_uuid = uuid.uuid4()
         try:
             # Additional e-mail validation to check MX record and normalize e-mail address
@@ -224,6 +278,7 @@ class CreateCustomerSerializer(CustomerSerializer):
                 username=email,
                 email=email,
                 name=full_name,
+                is_active=False,
                 path=settings.SUSE_CUSTOMER_CREATE_PATH,
                 attributes=attributes,
             )
@@ -231,6 +286,20 @@ class CreateCustomerSerializer(CustomerSerializer):
             raise ConflictError("Duplicate username") from ex
         except EmailNotValidError as ex:
             raise ValidationError("Invalid e-mail") from ex
+
+        welcome_link, welcome_token = self._create_welcome_link(instance, flow)
+
+        message = TemplateEmailMessage(
+            subject=_(settings.SUSE_WELCOME_SUBJECT),
+            to=[(instance.name, instance.email)],
+            template_name=settings.SUSE_WELCOME_TEMPLATE,
+            template_context={
+                "url": welcome_link,
+                "user": instance,
+                "expires": welcome_token.expires,
+            },
+        )
+        send_mails(None, message)
 
         return instance
 
