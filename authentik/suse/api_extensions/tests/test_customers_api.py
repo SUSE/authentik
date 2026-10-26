@@ -2,6 +2,7 @@
 
 import json
 
+import email_validator
 from django.test.utils import override_settings
 from django.urls.base import reverse
 from rest_framework.test import APITestCase
@@ -13,6 +14,8 @@ from authentik.core.tests.utils import (
     create_test_admin_user,
 )
 from authentik.lib.generators import generate_id
+
+email_validator.TEST_ENVIRONMENT = True
 
 
 def create_test_customer(name: str | None = None) -> User:
@@ -120,7 +123,6 @@ class TestUsersAPI(APITestCase):
         self.client.force_login(self.service_account)
 
         user_data = {
-            "email": "katjabiermann@localhost",
             "firstName": "Katja",
             "lastName": "Biermann",
             "phone": "0345 80 53 45",
@@ -136,18 +138,25 @@ class TestUsersAPI(APITestCase):
             },
         }
 
-        response = self.client.post(reverse("authentik_api:suse_customers-list"), data=user_data)
+        response = self.client.post(
+            reverse("authentik_api:suse_customers-list"),
+            data={"email": "KatjaBiermann@example.com", **user_data},
+        )
         self.assertEqual(response.status_code, 201)
 
-        user_data["pk"] = json.loads(response.content)["pk"]
+        pk = json.loads(response.content)["pk"]
 
-        self.assertJSONEqual(response.content, user_data)
+        self.assertJSONEqual(
+            response.content, {"email": "katjabiermann@example.com", "pk": pk, **user_data}
+        )
 
         response = self.client.get(
-            reverse("authentik_api:suse_customers-detail", kwargs={"pk": user_data["pk"]})
+            reverse("authentik_api:suse_customers-detail", kwargs={"pk": pk})
         )
         self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, user_data)
+        self.assertJSONEqual(
+            response.content, {"email": "katjabiermann@example.com", "pk": pk, **user_data}
+        )
 
     def test_create_required_and_read(self):
         """Create a user with required attributes only and confirm by reading back"""

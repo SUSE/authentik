@@ -3,6 +3,11 @@ import uuid
 from django.conf import settings
 from django.db.utils import IntegrityError
 from django_countries.serializer_fields import CountryField
+from email_validator import (
+    EmailNotValidError,
+    caching_resolver,
+    validate_email,
+)
 from rest_framework import mixins, permissions, serializers
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.fields import CharField, EmailField, IntegerField
@@ -172,6 +177,9 @@ class CustomerSerializer(serializers.Serializer):
         fields = ["pk", "email", "firstName", "lastName", "phone", "title", "company", "partnerId"]
 
 
+CACHING_RESOLVER = caching_resolver(timeout=10)
+
+
 class CreateCustomerSerializer(CustomerSerializer):
     email = EmailField(
         required=True,
@@ -181,7 +189,12 @@ class CreateCustomerSerializer(CustomerSerializer):
     def create(self, validated_data: dict) -> User:
         user_uuid = uuid.uuid4()
         try:
-            email = validated_data["email"].lower()
+            # Additional e-mail validation to check MX record and normalize e-mail address
+            validated_mail = validate_email(
+                validated_data["email"], check_deliverability=True, dns_resolver=CACHING_RESOLVER
+            )
+            email = validated_mail.normalized
+
             full_name = validated_data["firstName"] + " " + validated_data["lastName"]
             attributes = {
                 "cn": full_name,
@@ -210,6 +223,8 @@ class CreateCustomerSerializer(CustomerSerializer):
             )
         except IntegrityError as ex:
             raise ConflictError("Duplicate username") from ex
+        except EmailNotValidError as ex:
+            raise ValidationError("Invalid e-mail") from ex
 
         return instance
 
