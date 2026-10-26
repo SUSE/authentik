@@ -9,7 +9,7 @@
  */
 
 declare module "jquery" {
-    export function JQuery<TElement = HTMLElement>(selector: string): JQuery<TElement>;
+    export function JQuery<TElement = HTMLElement>(selector: string, elementSpec : Object = {}): JQuery<TElement>;
 
     export namespace JQuery {
         function ajax(options: JQueryAjaxSettings): void;
@@ -20,6 +20,7 @@ declare module "jquery" {
         getElement(): TElement;
         getText(): string;
         submit(): void;
+        val(value: string): JQuery<TElement>;
         html(html: string): JQuery<TElement>;
         addClass(className: string): JQuery<TElement>;
         removeClass(className: string): JQuery<TElement>;
