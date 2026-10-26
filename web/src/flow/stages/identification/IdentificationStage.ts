@@ -3,7 +3,6 @@ import "#elements/EmptyState";
 import "#flow/components/ak-flow-card";
 import "#flow/components/ak-flow-password-input";
 import "#flow/stages/captcha/CaptchaStage";
-
 import "#flow/components/suse-ak-banner";
 
 import {
@@ -410,7 +409,9 @@ export class IdentificationStage extends BaseStage<
             [UserFieldsEnum.Email]: msg("Email"),
             [UserFieldsEnum.Upn]: null,
         };
-        const label = OR_LIST_FORMATTERS.format(fields.filter(f => uiFields[f]).map((f) => uiFields[f]));
+        const label = OR_LIST_FORMATTERS.format(
+            fields.filter((f) => uiFields[f]).map((f) => uiFields[f]),
+        );
 
         // Check if passkey login is enabled to add webauthn to autocomplete
         const passkeyChallenge = (
@@ -506,7 +507,6 @@ export class IdentificationStage extends BaseStage<
     render(): TemplateResult {
         return html`<ak-flow-card .challenge=${this.challenge} part="flow-card">
             <form class="pf-c-form" @submit=${this.submitForm}>
-
                 <suse-ak-banner .recoveryUrl=${this.challenge?.recoveryUrl}></suse-ak-banner>
 
                 ${this.challenge?.applicationPre
