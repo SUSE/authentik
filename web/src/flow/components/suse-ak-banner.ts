@@ -1,3 +1,4 @@
+import { AuthentikWindow } from "#common/global";
 import { AKElement } from "#elements/Base";
 
 import { CSSResult, html, nothing, TemplateResult } from "lit";
@@ -22,12 +23,13 @@ export class Banner extends AKElement {
     bannerLines: BannerLine[] = [];
 
     @state()
-    bannerType: string;
+    bannerType: string = "info";
 
     connectedCallback() {
         super.connectedCallback();
 
-        const banner = window.custom_banners?.login;
+        const akWin = window as AuthentikWindow
+        const banner = akWin.custom_banners?.login;
         if (!banner) {
             return;
         }
