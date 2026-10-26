@@ -1,9 +1,10 @@
 #!/usr/bin/env -S bash
 set -e -o pipefail
+TMPDIR=/tmp
 MODE_FILE="${TMPDIR}/authentik-mode"
 
 if [[ -z "${PROMETHEUS_MULTIPROC_DIR}" ]]; then
-    export PROMETHEUS_MULTIPROC_DIR="${TMPDIR:-/tmp}/authentik_prometheus_tmp"
+    export PROMETHEUS_MULTIPROC_DIR="${TMPDIR}/authentik_prometheus_tmp"
 fi
 
 function log {
