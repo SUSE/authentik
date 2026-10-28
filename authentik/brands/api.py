@@ -133,6 +133,12 @@ class CurrentBrandSerializer(PassiveSerializer):
     def get_custom_banners(self, brand):
         return brand.attributes.get("banners", {})
 
+    def get_custom_user_settings(self, brand):
+        return brand.attributes.get("user_settings", {})
+
+    def get_geo_data_url(self, brand):
+        return brand.attributes.get("geo_data_url")
+
     def to_representation(self, brand):
         data = super().to_representation(brand)
         request = self.context.get("request")
