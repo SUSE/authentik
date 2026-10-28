@@ -17,6 +17,7 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from authentik.core.models import User
 from authentik.rbac.decorators import permission_required
+from authentik.suse.api_extensions.utils import DjangoResolverCache
 
 
 class ConflictError(ValidationError):
@@ -177,7 +178,7 @@ class CustomerSerializer(serializers.Serializer):
         fields = ["pk", "email", "firstName", "lastName", "phone", "title", "company", "partnerId"]
 
 
-CACHING_RESOLVER = caching_resolver(timeout=10)
+CACHING_RESOLVER = caching_resolver(timeout=10, cache=DjangoResolverCache())
 
 
 class CreateCustomerSerializer(CustomerSerializer):
