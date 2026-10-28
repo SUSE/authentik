@@ -184,7 +184,7 @@ CACHING_RESOLVER = caching_resolver(timeout=10, cache=DjangoResolverCache())
 class CreateCustomerSerializer(CustomerSerializer):
     email = EmailField(
         required=True,
-        validators=[UniqueValidator(queryset=User.objects.all())],
+        validators=[UniqueValidator(queryset=User.objects.all(), lookup="iexact")],
     )
 
     def create(self, validated_data: dict) -> User:
@@ -195,6 +195,11 @@ class CreateCustomerSerializer(CustomerSerializer):
                 validated_data["email"], check_deliverability=True, dns_resolver=CACHING_RESOLVER
             )
             email = validated_mail.normalized
+
+            # Add a case-insensitive check for the username
+            if User.objects.filter(username__iexact=email).exists():
+                # Kept vague to avoid enumeration
+                raise ValidationError("Conflict")
 
             full_name = validated_data["firstName"] + " " + validated_data["lastName"]
             attributes = {
