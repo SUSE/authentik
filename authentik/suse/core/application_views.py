@@ -194,28 +194,40 @@ class ApplicationViewSet(BaseAppViewSet):
             user = for_user
 
         # Check the cache
-        allowed_applications = cache.get(
-            user_app_cache_key(user.pk)
-        )
+        allowed_applications = cache.get(user_app_cache_key(user.pk))
 
         if allowed_applications is None:
             LOGGER.debug("Computing application list for user", username=user.username)
-            # When not cached, compute the app list, we'll use locks to
-            # coordinate concurrent requests.
             queryset = self._filter_queryset_for_list(self.get_queryset())
 
+            # When not cached, compute the app list, we'll use locks to
+            # coordinate concurrent requests.
             with user_app_lock(user.pk):
-                # Compute all access policies
-                allowed_applications = [
-                    app.pk
-                    for app in self._get_allowed_applications(queryset, user=user)
-                ]
-                # Write the cache
-                cache.set(
-                    user_app_cache_key(user.pk),
-                    allowed_applications,
-                    timeout=settings.SUSE_APPLICATION_LIST_CACHE_TTL
-                )
+                # Before computing, check the cache again, in case a request
+                # came in after our last cache check but before our cache
+                # write
+                if cached_allowed_apps := cache.get(user_app_cache_key(user.pk)):
+                    # if it happened: then avoid computation and use the cache
+                    allowed_applications = cached_allowed_apps
+                    LOGGER.debug(
+                        "Using precomputed allowed applications",
+                        application_count=len(allowed_applications)
+                    )
+                else:
+                    LOGGER.debug(
+                        "Computing allowed applications", user_pk=user.pk
+                    )
+                    # else: it's a good time to compute & write the cache for
+                    # subsequent requests.
+                    allowed_applications = [
+                        app.pk
+                        for app in self._get_allowed_applications(queryset, user=user)
+                    ]
+                    cache.set(
+                        user_app_cache_key(user.pk),
+                        allowed_applications,
+                        timeout=settings.SUSE_APPLICATION_LIST_CACHE_TTL
+                    )
 
         LOGGER.debug(
             "Expanding application list [from pk -> object]",
@@ -224,7 +236,6 @@ class ApplicationViewSet(BaseAppViewSet):
         # expand, apply pagination, and return
         queryset = self._suse_expand_applications(allowed_applications)
         return self._render_queryset(request, queryset)
-
 
     def _render_queryset(self, request, queryset):
         only_with_launch_url = str(
