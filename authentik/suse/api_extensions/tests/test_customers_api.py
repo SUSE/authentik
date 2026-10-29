@@ -158,6 +158,117 @@ class TestUsersAPI(APITestCase):
             response.content, {"email": "katjabiermann@example.com", "pk": pk, **user_data}
         )
 
+    def test_create_duplicate_with_different_casing(self):
+        """Create a user with required attributes only and confirm by reading back"""
+        self.client.force_login(self.service_account)
+
+        user: User = User.objects.create(
+            name="Brian Glaspie",
+            email="BrianNGlaspie@dayrep.com",
+            username="BrianNGlaspie@dayrep.com",
+            path="SUSE/People/Customers",
+            attributes={
+                "cn": "Brian Glaspie",
+                "givenName": "Brian",
+                "organization": "Buyer",
+                "sn": "Glaspie",
+                "telephoneNumber": "863-665-5408",
+                "title": "Ultrasonographer",
+            },
+        )
+        user.save()
+
+        user_data = {
+            "email": "briannglaspie@dayrep.com",
+            "firstName": "Brian",
+            "lastName": "Glaspie",
+            "phone": "863-665-5408",
+            "title": "Ultrasonographer",
+            "address": {
+                "state": "Michigan",
+                "street": "2009 Wood Duck Drive",
+                "country": "US",
+                "locality": "Lakeland",
+            },
+        }
+
+        response = self.client.post(reverse("authentik_api:suse_customers-list"), data=user_data)
+        self.assertEqual(response.status_code, 400)
+
+    def test_update_when_duplicate_exists(self):
+        """Update user should still work even if duplicates exist"""
+        self.client.force_login(self.service_account)
+
+        user1: User = User.objects.create(
+            name="Brian Glaspie",
+            email="BrianNGlaspie@dayrep.com",
+            username="BrianNGlaspie@dayrep.com",
+            path="SUSE/People/Customers",
+            attributes={
+                "cn": "Brian Glaspie",
+                "givenName": "Brian",
+                "organization": "Buyer",
+                "sn": "Glaspie",
+                "telephoneNumber": "863-665-5408",
+                "title": "Ultrasonographer",
+            },
+        )
+        user1.save()
+
+        user2: User = User.objects.create(
+            name="Brian Glaspie",
+            email="briannglaspie@dayrep.com",
+            username="briannglaspie@dayrep.co",
+            path="SUSE/People/Customers",
+            attributes={
+                "cn": "Brian Glaspie",
+                "givenName": "Brian",
+                "organization": "Buyer",
+                "sn": "Glaspie",
+                "telephoneNumber": "863-665-5408",
+                "title": "Ultrasonographer",
+            },
+        )
+        user2.save()
+
+        user_data = {
+            "firstName": "Brian",
+            "lastName": "Glaspie",
+            "phone": "863-665-5408",
+            "title": "Ultrasonographer",
+            "company": "AdventureSports!",
+            "partnerId": "PID-4242",
+            "address": {
+                "state": "Michigan",
+                "street": "2009 Wood Duck Drive",
+                "country": "US",
+                "locality": "Lakeland",
+                "postalCode": "06122",
+            },
+        }
+
+        response = self.client.put(
+            reverse("authentik_api:suse_customers-detail", kwargs={"pk": user2.pk}),
+            data=user_data,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        self.assertJSONEqual(
+            response.content,
+            {
+                "pk": user2.pk,
+                "email": user2.email.lower(),
+                "partnerId": "PID-4242",
+                **user_data,
+            },
+        )
+
+        # Check that we only updated user2
+        self.assertEqual(User.objects.get(pk=user1.pk).attributes["organization"], "Buyer")
+        self.assertEqual(
+            User.objects.get(pk=user2.pk).attributes["organization"], "AdventureSports!"
+        )
+
     def test_create_required_and_read(self):
         """Create a user with required attributes only and confirm by reading back"""
         self.client.force_login(self.service_account)
