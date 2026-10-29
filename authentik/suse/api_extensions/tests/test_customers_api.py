@@ -1,8 +1,11 @@
 """Test Customers API"""
 
 import json
+from unittest.mock import PropertyMock, patch
 
 import email_validator
+from django.core import mail
+from django.core.mail.backends.locmem import EmailBackend
 from django.test.utils import override_settings
 from django.urls.base import reverse
 from rest_framework.test import APITestCase
@@ -12,6 +15,7 @@ from authentik.core.models import (
 )
 from authentik.core.tests.utils import (
     create_test_admin_user,
+    create_test_flow,
 )
 from authentik.lib.generators import generate_id
 
@@ -94,6 +98,10 @@ def create_service_account(name: str | None = None) -> User:
     ),
     SUSE_CUSTOMER_CREATE_PATH="SUSE/People/Customers",
 )
+@patch(
+    "authentik.stages.email.models.EmailStage.backend_class",
+    PropertyMock(return_value=EmailBackend),
+)
 class TestUsersAPI(APITestCase):
     """Test Customers API"""
 
@@ -102,6 +110,8 @@ class TestUsersAPI(APITestCase):
         self.user = create_test_customer()
         self.service_account = create_service_account()
         self.community = create_test_community()
+
+        self.flow = create_test_flow()
 
     def test_list(self):
         """Test listing when logged in"""
@@ -138,10 +148,11 @@ class TestUsersAPI(APITestCase):
             },
         }
 
-        response = self.client.post(
-            reverse("authentik_api:suse_customers-list"),
-            data={"email": "KatjaBiermann@example.com", **user_data},
-        )
+        with self.settings(SUSE_WELCOME_FLOW=self.flow.slug):
+            response = self.client.post(
+                reverse("authentik_api:suse_customers-list"),
+                data={"email": "KatjaBiermann@example.com", **user_data},
+            )
         self.assertEqual(response.status_code, 201)
 
         pk = json.loads(response.content)["pk"]
@@ -287,7 +298,10 @@ class TestUsersAPI(APITestCase):
             },
         }
 
-        response = self.client.post(reverse("authentik_api:suse_customers-list"), data=user_data)
+        with self.settings(SUSE_WELCOME_FLOW=self.flow.slug):
+            response = self.client.post(
+                reverse("authentik_api:suse_customers-list"), data=user_data
+            )
         self.assertEqual(response.status_code, 201)
 
         pk = json.loads(response.content)["pk"]
@@ -317,6 +331,15 @@ class TestUsersAPI(APITestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, expected, "Read did not return expected value")
+
+        user = User.objects.get(pk=pk)
+        self.assertEqual(user.username, "melissaamos@armyspy.com")
+        self.assertFalse(user.is_active)
+
+        self.assertEqual(len(mail.outbox), 1)
+        sent_mail = mail.outbox[0]
+        self.assertEqual(sent_mail.subject, "Welcome to SUSEID")
+        self.assertEqual(sent_mail.to, ["Melissa Amos <melissaamos@armyspy.com>"])
 
     def test_update_customer(self):
         """Test full update of a customer"""
@@ -353,6 +376,8 @@ class TestUsersAPI(APITestCase):
                 **user_data,
             },
         )
+
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_patch_partner_id(self):
         """Test patch partnerId"""
@@ -527,7 +552,11 @@ class TestUsersAPI(APITestCase):
             },
         }
 
-        response = self.client.post(reverse("authentik_api:suse_customers-list"), data=user_data)
+        with self.settings(SUSE_WELCOME_FLOW=self.flow.slug):
+            response = self.client.post(
+                reverse("authentik_api:suse_customers-list"), data=user_data
+            )
+
         self.assertEqual(response.status_code, 201)
 
         pk = json.loads(response.content)["pk"]

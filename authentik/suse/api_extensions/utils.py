@@ -25,3 +25,9 @@ class DjangoResolverCache(dns.resolver.Cache):
             cache.delete_many(keys)
         else:
             cache.delete(self._format_key(key))
+
+
+def first(result_set):
+    for entry in result_set[:1]:
+        return entry
+    return None

@@ -1,6 +1,7 @@
 # Infrastructure specific settings
 
 from authentik.lib.config import CONFIG
+from authentik.lib.utils.time import timedelta_from_string
 from authentik.root.settings import DRAMATIQ as BASE_DRAMATIQ
 
 # S3 Configuration
@@ -104,6 +105,13 @@ USE_SUSE_SCIM_CLIENT = CONFIG.get_bool("suse.use_scim_client", False)
 # SUSE/People/Partners|SUSE/People/Customers|SUSE/People/Community
 SUSE_CUSTOMER_ALLOWED_PATHS = CONFIG.get("suse.customer_allowed_paths", "").split("|")
 SUSE_CUSTOMER_CREATE_PATH = CONFIG.get("suse.customer_create_paths", "")  # "SUSE/People/Customers"
+
+SUSE_WELCOME_FLOW = CONFIG.get("suse.welcome_flow", None)
+SUSE_WELCOME_EXPIRATION = timedelta_from_string(
+    CONFIG.get_int("suse.welcome_expiration", "hours=1")
+)
+SUSE_WELCOME_SUBJECT = CONFIG.get("suse.welcome_subject", "Welcome to SUSEID")
+SUSE_WELCOME_TEMPLATE = CONFIG.get("suse.welcome_template", "email/account_confirmation.html")
 
 if CONFIG.get("suse.cache_backend", "postgres") == "redis":
     redis_url = CONFIG.get("suse.redis.url", "")
