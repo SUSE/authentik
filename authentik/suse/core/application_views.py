@@ -168,10 +168,25 @@ class ApplicationViewSet(BaseAppViewSet):
             str(request.query_params.get("superuser_full_list", "false")).lower() == "true"
         )
 
-        # Super users don't need extra processing. They get the raw app list.
-        if superuser_full_list and request.user.is_superuser:
-            return super().list(request)
+        # Administrative variant, spawned by the admin frontend
+        if superuser_full_list:
+            if request.user.is_superuser:
+                # Super users don't need extra processing. They get the raw app list.
+                return super().list(request)
+            else:
+                # Non superusers (meaning operators and/or app admins)
+                # can only see what objects they have assigned
+                #
+                # The super method _filter_queryset_for_list skips the object
+                # permission (guardian) filter, here we do want that permission
+                # filter.
+                queryset = self.filter_queryset(self.get_queryset())
+                paged_apps = self.paginator.paginate_queryset(queryset, request)
+                serializer = self.get_serializer(paged_apps, many=True)
+                return self.get_paginated_response(serializer.data)
 
+        # Here we're on the user-frontend variant, applications are filtered by
+        # what it's bound to the user via PolicyBindingModels
         user = self.request.user
 
         # if for_user is requested, then find out the effective user we want to inspect
