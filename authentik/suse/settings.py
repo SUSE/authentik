@@ -86,6 +86,7 @@ CONFIG.log(
 # Key   = endpoint name: 'core_applications_check_access_retrieve'
 # Value = True -> Use SUSE version, False -> Use upstream version
 known_endpoints = (
+    "core_applications_list",
     "core_applications_check_access_retrieve",
     "core_users_update",
     "core_users_partial_update",
@@ -112,6 +113,9 @@ SUSE_WELCOME_EXPIRATION = timedelta_from_string(
 )
 SUSE_WELCOME_SUBJECT = CONFIG.get("suse.welcome_subject", "Welcome to SUSEID")
 SUSE_WELCOME_TEMPLATE = CONFIG.get("suse.welcome_template", "email/account_confirmation.html")
+
+# Default to 1h ttl
+SUSE_APPLICATION_LIST_CACHE_TTL = CONFIG.get_int("suse.application_list_cache_ttl", 3600)
 
 if CONFIG.get("suse.cache_backend", "postgres") == "redis":
     redis_url = CONFIG.get("suse.redis.url", "")

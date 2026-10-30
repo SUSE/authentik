@@ -110,3 +110,66 @@ class TestApplicationAccessCheck(APITestCase):
         self.assertEqual(response.status_code, 200)
         body = loads(response.content.decode())
         self.assertEqual(body["passing"], False)
+
+
+class TestUserApplicationList(APITestCase):
+    def setUp(self) -> None:
+        self.user = create_test_user()
+        self.allowed: Application = Application.objects.create(
+            name="allowed",
+            slug="allowed",
+            meta_launch_url="https://goauthentik.io/%(username)s",
+            open_in_new_tab=True,
+        )
+
+        self.denied = Application.objects.create(name="denied", slug="denied")
+        PolicyBinding.objects.create(
+            target=self.denied,
+            policy=DummyPolicy.objects.create(name="deny", result=False, wait_min=1, wait_max=2),
+            order=0,
+        )
+
+        # user can see app, but cannot admin it, that's delegated_admin's job.
+        self.delegated_app: Application = Application.objects.create(
+            name="delegated-admin-app",
+            slug="delegated-admin-app",
+            meta_launch_url="https://goauthentik.io/%(username)s",
+            open_in_new_tab=True,
+        )
+        PolicyBinding.objects.create(
+            target=self.delegated_app,
+            user=self.user,
+            order=0,
+        )
+        self.delegated_admin = create_test_user()
+        self.delegated_admin.assign_perms_to_managed_role(
+            "authentik_core.view_user_applications", obj=self.delegated_app
+        )
+        self.delegated_admin.assign_perms_to_managed_role("authentik_rbac.access_admin_interface")
+
+    def test_upstream_plain_list_behavior(self):
+        self.client.force_login(self.user)
+
+        with self.assertNumQueries(34):
+            response = self.client.get(reverse("authentik_api:application-list"))
+            self.assertEqual(response.status_code, 200)
+
+        with self.assertNumQueries(29):
+            response = self.client.get(reverse("authentik_api:application-list"))
+            self.assertEqual(response.status_code, 200)
+
+
+    @override_settings(OVERRIDE_ENDPOINT=dict(core_applications_list=True))
+    def test_operator_only_sees_apps_with_view_perm(self):
+        self.client.force_login(self.user)
+
+        with self.assertNumQueries(41):
+            response = self.client.get(reverse("authentik_api:application-list", query=dict(superuser_full_list="true")))
+            # TODO: check that self.user don't see _any_ app
+            self.assertEqual(response.status_code, 200)
+
+        self.client.force_login(self.delegated_admin)
+        with self.assertNumQueries(26):
+            response = self.client.get(reverse("authentik_api:application-list", query=dict(superuser_full_list="true")))
+            # TODO: check that self.delegated_admin sees exclusively self.delegated_app
+            self.assertEqual(response.status_code, 200)
