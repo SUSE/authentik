@@ -259,8 +259,8 @@ class AutosubmitStage extends Stage<AutosubmitChallenge> {
                 </div>
             </form>`);
         Object.entries(this.challenge.attrs).forEach(([key, value]) => {
-            $("<input>", {name: key, type: "hidden"}).val(value).appendTo("#autosubmit-form")
-        })
+            $("<input>", { name: key, type: "hidden" }).val(value).appendTo("#autosubmit-form");
+        });
         $("#autosubmit-form").submit();
     }
 }
