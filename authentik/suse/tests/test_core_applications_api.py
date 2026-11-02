@@ -162,11 +162,11 @@ class TestApplicationList(APITestCase):
     def test_upstream_plain_list_behavior(self):
         self.client.force_login(self.user)
 
-        with self.assertNumQueries(46):
+        with self.assertNumQueries(38):
             response = self.client.get(reverse("authentik_api:application-list"))
             self.assertEqual(response.status_code, 200)
 
-        with self.assertNumQueries(26):
+        with self.assertNumQueries(29):
             response = self.client.get(reverse("authentik_api:application-list"))
             self.assertEqual(response.status_code, 200)
 
