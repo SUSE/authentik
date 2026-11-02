@@ -271,6 +271,8 @@ class CreateCustomerSerializer(CustomerSerializer):
                 "title": validated_data["title"],
                 "address": AddressSerializer().to_internal_value(validated_data["address"]),
                 "uuid": str(user_uuid),
+                "is_verified": False,
+                "source": "CustomerAPI",
             }
 
             instance: User = User.objects.create_user(

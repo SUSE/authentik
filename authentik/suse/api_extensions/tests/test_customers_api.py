@@ -1,6 +1,7 @@
 """Test Customers API"""
 
 import json
+import uuid
 from unittest.mock import PropertyMock, patch
 
 import email_validator
@@ -102,6 +103,7 @@ def create_service_account(name: str | None = None) -> User:
     "authentik.stages.email.models.EmailStage.backend_class",
     PropertyMock(return_value=EmailBackend),
 )
+@patch("uuid.uuid4", PropertyMock(return_value=uuid.UUID("c52a7854-9392-4062-b024-237f7950be27")))
 class TestUsersAPI(APITestCase):
     """Test Customers API"""
 
@@ -167,6 +169,32 @@ class TestUsersAPI(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(
             response.content, {"email": "katjabiermann@example.com", "pk": pk, **user_data}
+        )
+
+        self.assertEqual(
+            User.objects.get(pk=pk).attributes,
+            {
+                "cn": "Katja Biermann",
+                "givenName": "Katja",
+                "is_verified": False,
+                "mail": ["KatjaBiermann@example.com"],
+                "organization": "AdventureSports!",
+                "partnerId": "NEW-PARTNER-1",
+                "sn": "Biermann",
+                "source": "CustomerAPI",
+                "telephoneNumber": "0345 80 53 45",
+                "title": "Drilling and boring machine tool setter",
+                "uid": "KatjaBiermann@example.com",
+                "upn": "KatjaBiermann@example.com",
+                "uuid": "c52a7854-9392-4062-b024-237f7950be27",
+                "address": {
+                    "country": "DE",
+                    "locality": "Halle",
+                    "postalCode": "06122",
+                    "state": "Sachsen-Anhalt",
+                    "street": "Messedamm 74",
+                },
+            },
         )
 
     def test_create_duplicate_with_different_casing(self):
