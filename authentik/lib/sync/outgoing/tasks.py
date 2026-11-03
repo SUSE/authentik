@@ -21,6 +21,7 @@ from authentik.lib.sync.outgoing.models import OutgoingSyncProvider
 from authentik.lib.utils.errors import exception_to_dict
 from authentik.lib.utils.reflection import class_to_path, path_to_class
 from authentik.lib.utils.time import timedelta_from_string
+from authentik.suse.lib.sync.outgoing.tasks import delete_orphaned_users
 from authentik.tasks.middleware import CurrentTask
 from authentik.tasks.models import Task
 
@@ -104,6 +105,7 @@ class SyncTasks:
                 )
                 users_tasks.run().wait(timeout=provider.get_object_sync_time_limit_ms(User))
                 group_tasks.run().wait(timeout=provider.get_object_sync_time_limit_ms(Group))
+                delete_orphaned_users(self.logger, provider)
             except TransientSyncException as exc:
                 self.logger.warning("transient sync exception", exc=exc)
                 task.warning("Sync encountered a transient exception. Retrying", exc=exc)
