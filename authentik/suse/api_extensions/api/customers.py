@@ -8,6 +8,7 @@ from django.utils.http import urlencode
 from django.utils.timezone import now
 from django.utils.translation import gettext as _
 from django_countries.serializer_fields import CountryField
+from dns.resolver import NoResolverConfiguration, Resolver
 from email_validator import (
     EmailNotValidError,
     caching_resolver,
@@ -19,6 +20,7 @@ from rest_framework.fields import CharField, EmailField, IntegerField
 from rest_framework.status import HTTP_409_CONFLICT
 from rest_framework.validators import UniqueValidator
 from rest_framework.viewsets import ReadOnlyModelViewSet
+from structlog.stdlib import get_logger
 
 from authentik.core.models import Token, User
 from authentik.flows.exceptions import FlowNonApplicableException
@@ -30,6 +32,17 @@ from authentik.stages.email.flow import pickle_flow_token_for_email
 from authentik.stages.email.tasks import send_mails
 from authentik.stages.email.utils import TemplateEmailMessage
 from authentik.suse.api_extensions.utils import DjangoResolverCache, first
+
+LOGGER = get_logger()
+
+# Build service  doesn't give us any networking
+try:
+    RESOLVER = Resolver()
+except NoResolverConfiguration as exc:
+    LOGGER.info("Could not build a dns resolver. Using a stub", exc=exc)
+    RESOLVER = Resolver(configure=False)
+
+CACHING_RESOLVER = caching_resolver(timeout=10, cache=DjangoResolverCache(), dns_resolver=RESOLVER)
 
 
 class ConflictError(ValidationError):
@@ -188,9 +201,6 @@ class CustomerSerializer(serializers.Serializer):
     class Meta:
         model = User
         fields = ["pk", "email", "firstName", "lastName", "phone", "title", "company", "partnerId"]
-
-
-CACHING_RESOLVER = caching_resolver(timeout=10, cache=DjangoResolverCache())
 
 
 class CreateCustomerSerializer(CustomerSerializer):
