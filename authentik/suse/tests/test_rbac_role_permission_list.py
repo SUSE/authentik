@@ -13,6 +13,7 @@ from authentik.stages.invitation.models import Invitation
 from authentik.tenants.models import Tenant
 
 
+@override_settings(CACHES=dict(default=dict(BACKEND="authentik.suse.memory_cache.MemoryCache")))
 class TestRBACPermissionRoles(APITestCase):
     """Test RolePermissionViewSet api"""
 
@@ -33,7 +34,7 @@ class TestRBACPermissionRoles(APITestCase):
         self.role.assign_perms("authentik_stages_invitation.view_invitation", obj=inv)
 
     def test_original_list(self):
-        with self.assertNumQueries(16):
+        with self.assertNumQueries(14):
             res = self.client.get(reverse("authentik_api:permissions-roles-list"))
             self.assertEqual(res.status_code, 200)
 
@@ -44,7 +45,7 @@ class TestRBACPermissionRoles(APITestCase):
             )
             self.role.assign_perms("authentik_stages_invitation.view_invitation", obj=inv)
 
-        with self.assertNumQueries(54):
+        with self.assertNumQueries(52):
             res = self.client.get(reverse("authentik_api:permissions-roles-list"))
             self.assertEqual(res.status_code, 200)
             returned_results = len(res.json()["results"])
@@ -54,7 +55,7 @@ class TestRBACPermissionRoles(APITestCase):
 
         # when page_size is provided... it clamps against max... but when not...
         # max is not taken into account...
-        with self.assertNumQueries(34):
+        with self.assertNumQueries(32):
             res = self.client.get(
                 reverse("authentik_api:permissions-roles-list", query=dict(page_size=20))
             )
@@ -66,7 +67,7 @@ class TestRBACPermissionRoles(APITestCase):
 
     @override_settings(OVERRIDE_ENDPOINT=dict(rbac_permissions_roles_list=True))
     def test_improved_list(self):
-        with self.assertNumQueries(14):
+        with self.assertNumQueries(12):
             res = self.client.get(
                 reverse("authentik_api:permissions-roles-list", query=dict(suse_serializer="yes"))
             )
@@ -83,7 +84,7 @@ class TestRBACPermissionRoles(APITestCase):
             self.role.assign_perms("authentik_stages_invitation.view_invitation", obj=inv)
             total_invitations += 1
 
-        with self.assertNumQueries(14):
+        with self.assertNumQueries(12):
             res = self.client.get(
                 reverse("authentik_api:permissions-roles-list", query=dict(suse_serializer="yes"))
             )
@@ -95,7 +96,7 @@ class TestRBACPermissionRoles(APITestCase):
             ), "Did not obey new pagination"
 
         # when page_size is provided... it clamps against tenant max instead.
-        with self.assertNumQueries(14):
+        with self.assertNumQueries(12):
             res = self.client.get(
                 reverse(
                     "authentik_api:permissions-roles-list",
