@@ -23,7 +23,7 @@ export class EmailStage extends BaseStage<EmailChallenge, EmailChallengeResponse
         return html`<ak-flow-card .challenge=${this.challenge}>
             <form class="pf-c-form" @submit=${this.submitForm}>
                 <div class="pf-c-form__group">
-                    <p>${msg("Check your Inbox for a verification email.")}</p>
+                    <p>Check your inbox for a verification email.</p>
                 </div>
 
                 <fieldset class="pf-c-form__group pf-m-action">
@@ -33,7 +33,7 @@ export class EmailStage extends BaseStage<EmailChallenge, EmailChallengeResponse
                         type="submit"
                         class="pf-c-button pf-m-primary pf-m-block"
                     >
-                        ${msg("Send Email again.")}
+                        Send email again
                     </button>
                 </fieldset>
             </form>
