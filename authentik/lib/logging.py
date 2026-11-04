@@ -33,21 +33,41 @@ def get_log_level():
 
 def structlog_configure():
     """Configure structlog itself"""
+    is_debug_enabled = CONFIG.get_bool("debug")
+
+    processors = [
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.contextvars.merge_contextvars,
+        add_process_id,
+        add_tenant_information,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso", utc=False),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.ExceptionRenderer(
+            structlog.tracebacks.ExceptionDictTransformer(show_locals=is_debug_enabled)
+        ),
+    ]
+
+    if get_log_level() == "DEBUG" or is_debug_enabled:
+        # Add call site references to log lines
+        processors.append(
+            structlog.processors.CallsiteParameterAdder(
+                {
+                    structlog.processors.CallsiteParameter.PATHNAME,
+                    structlog.processors.CallsiteParameter.FUNC_NAME,
+                    structlog.processors.CallsiteParameter.LINENO,
+                    structlog.processors.CallsiteParameter.THREAD_NAME,
+                }
+            )
+        )
+
+    # this processor must be last in the chain
+    # https://www.structlog.org/en/stable/api.html#structlog.stdlib.ProcessorFormatter.wrap_for_formatter
+    processors.append(structlog.stdlib.ProcessorFormatter.wrap_for_formatter)
+
     structlog.configure_once(
-        processors=[
-            structlog.stdlib.add_log_level,
-            structlog.stdlib.add_logger_name,
-            structlog.contextvars.merge_contextvars,
-            add_process_id,
-            add_tenant_information,
-            structlog.stdlib.PositionalArgumentsFormatter(),
-            structlog.processors.TimeStamper(fmt="iso", utc=False),
-            structlog.processors.StackInfoRenderer(),
-            structlog.processors.ExceptionRenderer(
-                structlog.tracebacks.ExceptionDictTransformer(show_locals=CONFIG.get_bool("debug"))
-            ),
-            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
-        ],
+        processors=processors,
         logger_factory=structlog.stdlib.LoggerFactory(),
         wrapper_class=structlog.make_filtering_bound_logger(
             getattr(logging, get_log_level(), logging.WARNING)
