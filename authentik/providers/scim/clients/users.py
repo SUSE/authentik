@@ -205,7 +205,7 @@ class SCIMUserClient(SCIMClient[User, SCIMProviderUser, SCIMUserSchema]):
                 PatchOperation(
                     op=op,
                     path=attr,
-                    value=payload[attr],
+                    value=payload.get(attr),
                 )
             )
 
