@@ -193,21 +193,22 @@ class SCIMUserClient(SCIMClient[User, SCIMProviderUser, SCIMUserSchema]):
         patch_ops = []
 
         for attr in supported_fields:
-            op = PatchOp.replace
-            if attr not in connection.attributes:
-                if attr not in payload:
-                    # skip
-                    continue
+            # attr is not present anywhere -> ignore it
+            if attr not in payload or attr not in connection.attributes:
+                continue
 
+            op = PatchOp.replace
+            value = payload.get(attr)
+
+            # attr is not present upstream -> add it
+            if attr not in connection.attributes:
                 op = PatchOp.add
 
-            patch_ops.append(
-                PatchOperation(
-                    op=op,
-                    path=attr,
-                    value=payload[attr],
-                )
-            )
+                # If the added value is None -> ignore it.
+                if value is None:
+                    return
+
+            patch_ops.append(PatchOperation(op=op, path=attr, value=value))
 
         self._patch_chunked(connection.scim_id, *patch_ops)
 
