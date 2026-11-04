@@ -1,5 +1,8 @@
 """API flow tests"""
 
+from unittest.mock import patch
+
+from django.core.cache import cache
 from django.test.utils import override_settings
 from django.urls import reverse
 from rest_framework.test import APITestCase
@@ -9,8 +12,10 @@ from authentik.flows.models import Flow, FlowDesignation, FlowStageBinding
 from authentik.policies.dummy.models import DummyPolicy
 from authentik.policies.models import PolicyBinding
 from authentik.stages.dummy.models import DummyStage
+from authentik.tenants.models import Tenant
 
 
+@override_settings(CACHES=dict(default=dict(BACKEND="authentik.suse.memory_cache.MemoryCache")))
 class TestFlowsAPI(APITestCase):
 
     def setUp(self):
@@ -39,20 +44,30 @@ class TestFlowsAPI(APITestCase):
 
             PolicyBinding.objects.create(policy=false_policy, target=binding2, order=0)
 
-    def test_upstream_flow_list(self):
-        with self.assertNumQueries(36):
+    @patch.object(cache, "keys")
+    def test_upstream_flow_list(self, keys_method_mock):
+        page_size = Tenant.pagination_default_page_size.field.default
+        with self.assertNumQueries(14):
             response = self.client.get(reverse("authentik_api:flow-list"))
             self.assertEqual(response.status_code, 200)
+        assert keys_method_mock.call_count == page_size, "Cache was not checked"
 
+    @patch.object(cache, "keys")
     @override_settings(OVERRIDE_ENDPOINT=dict(flows_instances_list=True))
-    def test_improved_flow_list(self):
-        with self.assertNumQueries(16):
+    def test_improved_flow_list(self, keys_method_mock):
+        with self.assertNumQueries(14):
             response = self.client.get(reverse("authentik_api:flow-list"))
             self.assertEqual(response.status_code, 200)
+            assert (
+                keys_method_mock.call_count == 0
+            ), "Cache was checked, even though we disabled it."
 
         # even when asking more than the default...
-        with self.assertNumQueries(16):
+        with self.assertNumQueries(14):
             response = self.client.get(
                 reverse("authentik_api:flow-list", query=dict(page_size=100))
             )
             self.assertEqual(response.status_code, 200)
+            assert (
+                keys_method_mock.call_count == 0
+            ), "Cache was checked, even though we disabled it."

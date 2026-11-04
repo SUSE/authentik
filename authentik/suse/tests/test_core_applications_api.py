@@ -12,6 +12,7 @@ from authentik.policies.dummy.models import DummyPolicy
 from authentik.policies.models import PolicyBinding
 
 
+@override_settings(CACHES=dict(default=dict(BACKEND="authentik.suse.memory_cache.MemoryCache")))
 class TestApplicationAccessCheck(APITestCase):
     """Test User Email Validation API based on dynamic configuration"""
 
@@ -112,6 +113,7 @@ class TestApplicationAccessCheck(APITestCase):
         self.assertEqual(body["passing"], False)
 
 
+@override_settings(CACHES=dict(default=dict(BACKEND="authentik.suse.memory_cache.MemoryCache")))
 class TestApplicationList(APITestCase):
     def setUp(self) -> None:
         self.superuser = create_test_admin_user()
@@ -162,11 +164,11 @@ class TestApplicationList(APITestCase):
     def test_upstream_plain_list_behavior(self):
         self.client.force_login(self.user)
 
-        with self.assertNumQueries(38):
+        with self.assertNumQueries(28):
             response = self.client.get(reverse("authentik_api:application-list"))
             self.assertEqual(response.status_code, 200)
 
-        with self.assertNumQueries(29):
+        with self.assertNumQueries(22):
             response = self.client.get(reverse("authentik_api:application-list"))
             self.assertEqual(response.status_code, 200)
 
@@ -178,13 +180,13 @@ class TestApplicationList(APITestCase):
             str(app.pk) for app in [self.app_always_allowed, self.delegated_admin_app]
         }
 
-        with self.assertNumQueries(46):
+        with self.assertNumQueries(35):
             response = self.client.get(reverse("authentik_api:application-list"))
             self.assertEqual(response.status_code, 200)
             returned_app_ids = {i["pk"] for i in response.json()["results"]}
             assert expected_app_ids == returned_app_ids, "Allowed apps differ, permissions broke."
 
-        with self.assertNumQueries(26):
+        with self.assertNumQueries(19):
             response = self.client.get(reverse("authentik_api:application-list"))
             self.assertEqual(response.status_code, 200)
             returned_app_ids = {i["pk"] for i in response.json()["results"]}
@@ -198,7 +200,7 @@ class TestApplicationList(APITestCase):
             str(app.pk) for app in [self.app_always_allowed, self.app_only_for_second_user]
         }
 
-        with self.assertNumQueries(49):
+        with self.assertNumQueries(38):
             response = self.client.get(
                 reverse("authentik_api:application-list", query=dict(for_user=self.other_user.pk))
             )
@@ -206,7 +208,7 @@ class TestApplicationList(APITestCase):
             returned_app_ids = {i["pk"] for i in response.json()["results"]}
             assert expected_app_ids == returned_app_ids, "Allowed apps differ, permissions broke."
 
-        with self.assertNumQueries(29):
+        with self.assertNumQueries(22):
             response = self.client.get(
                 reverse("authentik_api:application-list", query=dict(for_user=self.other_user.pk))
             )
@@ -222,7 +224,7 @@ class TestApplicationList(APITestCase):
             str(app.pk) for app in [self.app_always_allowed, self.app_only_for_second_user]
         }
 
-        with self.assertNumQueries(48):
+        with self.assertNumQueries(37):
             response = self.client.get(
                 reverse("authentik_api:application-list", query=dict(for_user=self.other_user.pk))
             )
@@ -230,7 +232,7 @@ class TestApplicationList(APITestCase):
             returned_app_ids = {i["pk"] for i in response.json()["results"]}
             assert expected_app_ids == returned_app_ids, "Allowed apps differ, permissions broke."
 
-        with self.assertNumQueries(28):
+        with self.assertNumQueries(21):
             response = self.client.get(
                 reverse("authentik_api:application-list", query=dict(for_user=self.other_user.pk))
             )
@@ -252,7 +254,7 @@ class TestApplicationList(APITestCase):
             ]
         }
 
-        with self.assertNumQueries(24):
+        with self.assertNumQueries(19):
             response = self.client.get(
                 reverse("authentik_api:application-list", query=dict(superuser_full_list="true"))
             )
@@ -260,7 +262,7 @@ class TestApplicationList(APITestCase):
             returned_app_ids = {i["pk"] for i in response.json()["results"]}
             assert expected_app_ids == returned_app_ids, "Allowed apps differ, permissions broke."
 
-        with self.assertNumQueries(25):
+        with self.assertNumQueries(19):
             response = self.client.get(
                 reverse("authentik_api:application-list", query=dict(superuser_full_list="true"))
             )
