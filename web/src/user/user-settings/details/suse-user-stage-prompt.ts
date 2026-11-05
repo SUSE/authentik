@@ -193,7 +193,9 @@ export class SuseUserStagePrompt extends UserSettingsPromptStage {
             const countryKey = this.fieldConfig.geo?.country;
             const stateKey = this.fieldConfig.geo?.state;
 
-            if (countryKey && keys.includes(countryKey)) {
+            const haveGeoData = this.countries.length > 0;
+
+            if (haveGeoData && countryKey && keys.includes(countryKey)) {
                 const countryVal = data.get(countryKey)?.toString().trim() || "";
                 if (countryVal && !this.countries.some((c) => c.name === countryVal)) {
                     this.sectionError = "Please select a valid Country from the list.";
@@ -201,7 +203,7 @@ export class SuseUserStagePrompt extends UserSettingsPromptStage {
                 }
             }
 
-            if (stateKey && keys.includes(stateKey) && this.selectedCountry) {
+            if (haveGeoData && keys.includes(stateKey) && this.selectedCountry) {
                 const stateVal = data.get(stateKey)?.toString().trim() || "";
                 const countryData = this.countries.find((c) => c.name === this.selectedCountry);
                 const validStates = countryData
