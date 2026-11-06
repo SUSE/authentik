@@ -36,6 +36,12 @@ import PFStack from "@patternfly/patternfly/layouts/Stack/stack.css";
 import PFDisplay from "@patternfly/patternfly/utilities/Display/display.css";
 import PFSizing from "@patternfly/patternfly/utilities/Sizing/sizing.css";
 
+interface SectionConfig {
+    title: string;
+    flowSlug?: string;
+    bannerKey?: string;
+}
+
 @customElement("ak-user-settings")
 export class UserSettingsPage extends WithSession(AKElement) {
     static styles: CSSResult[] = [
@@ -73,6 +79,10 @@ export class UserSettingsPage extends WithSession(AKElement) {
             this.userSettings?.filter((stage) => stage.component === "ak-user-settings-password") ||
             [];
 
+        const sections: SectionConfig[] = customConfig?.sections?.length
+            ? customConfig.sections
+            : [{ title: msg("General details") }];
+
         const { currentUser } = this;
 
         return html`<div class="pf-c-page">
@@ -92,10 +102,7 @@ export class UserSettingsPage extends WithSession(AKElement) {
                         class="pf-c-page__main-section pf-m-no-padding-mobile"
                     >
                         <div class="pf-l-stack pf-m-gutter">
-                            <ak-user-settings-flow-executor
-                                class="pf-l-stack__item"
-                            ></ak-user-settings-flow-executor>
-                            ${customConfig?.sections?.map(
+                            ${sections.map(
                                 (section) => html`
                                     <suse-user-settings-flow-executor
                                         class="pf-l-stack__item"
