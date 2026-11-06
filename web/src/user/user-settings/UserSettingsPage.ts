@@ -40,6 +40,8 @@ interface SectionConfig {
     title: string;
     flowSlug?: string;
     bannerKey?: string;
+    // so far, only these specific tabs are customizable live
+    tab?: "credentials" | "details";
 }
 
 @customElement("ak-user-settings")
@@ -81,7 +83,12 @@ export class UserSettingsPage extends WithSession(AKElement) {
 
         const sections: SectionConfig[] = customConfig?.sections?.length
             ? customConfig.sections
-            : [{ title: msg("General details") }];
+            : [{ title: msg("General details"), tab: "details" }];
+
+        const groupedSections = sections.reduce<Record<string, SectionConfig[]>>((acc, section) => {
+            (acc[section.tab] ??= []).push(section);
+            return acc;
+        }, {});
 
         const { currentUser } = this;
 
@@ -102,7 +109,7 @@ export class UserSettingsPage extends WithSession(AKElement) {
                         class="pf-c-page__main-section pf-m-no-padding-mobile"
                     >
                         <div class="pf-l-stack pf-m-gutter">
-                            ${sections.map(
+                            ${(groupedSections["details"] || []).map(
                                 (section) => html`
                                     <suse-user-settings-flow-executor
                                         class="pf-l-stack__item"
@@ -115,21 +122,37 @@ export class UserSettingsPage extends WithSession(AKElement) {
                         </div>
                     </div>
 
-                    ${pwStage.length > 0
+                    ${pwStage.length > 0 || (groupedSections["credentials"]?.length ?? 0) > 0
                         ? html`
                               <div
-                                  id="page-password"
+                                  id="page-credentials"
                                   role="tabpanel"
                                   tabindex="0"
-                                  slot="page-password"
-                                  aria-label=${msg("Password")}
+                                  slot="page-credentials"
+                                  aria-label=${msg("Credentials")}
                                   class="pf-c-page__main-section pf-m-no-padding-mobile"
                               >
                                   <div class="pf-l-stack pf-m-gutter">
-                                      <ak-user-settings-password
-                                          class="pf-l-stack__item"
-                                          configureUrl=${ifDefined(pwStage[0].configureUrl)}
-                                      ></ak-user-settings-password>
+                                      ${pwStage.length > 0
+                                          ? html`
+                                                <ak-user-settings-password
+                                                    class="pf-l-stack__item"
+                                                    configureUrl=${ifDefined(
+                                                        pwStage[0].configureUrl,
+                                                    )}
+                                                ></ak-user-settings-password>
+                                            `
+                                          : nothing}
+                                      ${(groupedSections["credentials"] || []).map(
+                                          (section) => html`
+                                              <suse-user-settings-flow-executor
+                                                  class="pf-l-stack__item"
+                                                  sectionTitle=${section.title}
+                                                  bannerKey=${section.bannerKey}
+                                                  .flowSlug=${section.flowSlug}
+                                              ></suse-user-settings-flow-executor>
+                                          `,
+                                      )}
                                   </div>
                               </div>
                           `
