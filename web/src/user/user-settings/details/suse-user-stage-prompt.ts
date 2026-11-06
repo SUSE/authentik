@@ -2,7 +2,7 @@ import { SlottedTemplateResult } from "#elements/types";
 
 import { UserSettingsPromptStage } from "#user/user-settings/details/stages/prompt/PromptStage";
 
-import { StagePrompt } from "@goauthentik/api";
+import { PromptTypeEnum, StagePrompt } from "@goauthentik/api";
 
 import { msg } from "@lit/localize";
 import { html, nothing, PropertyValues } from "lit";
@@ -95,6 +95,21 @@ export class SuseUserStagePrompt extends UserSettingsPromptStage {
         const fieldId = `field-${fieldKey}`;
 
         if (this.fieldConfig.immutable?.includes(fieldKey) && prompt.initialValue) {
+            if (
+                prompt.type === PromptTypeEnum.TextArea ||
+                prompt.type === PromptTypeEnum.TextAreaReadOnly
+            ) {
+                return html`
+                    <textarea
+                        id=${fieldId}
+                        name=${fieldKey}
+                        class="pf-c-form-control"
+                        readonly
+                        .value=${prompt.initialValue}
+                    ></textarea>
+                `;
+            }
+
             return html`
                 <input
                     type="text"
