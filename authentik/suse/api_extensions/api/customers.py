@@ -235,7 +235,8 @@ class CreateCustomerSerializer(CustomerSerializer):
                 "user": user,
                 "flow": flow,
                 "_plan": _plan,
-                "revoke_on_execution": True,
+                # Revocation happens in the stage inserted by pickle_flow_token_for_email
+                "revoke_on_execution": False,
                 "expires": now() + settings.SUSE_WELCOME_EXPIRATION,
             },
         )
