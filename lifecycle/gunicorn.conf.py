@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import gettempdir
 from typing import TYPE_CHECKING
 
+import pyroscope
 from prometheus_client.values import MultiProcessValue
 
 from authentik import authentik_full_version
@@ -58,6 +59,14 @@ def post_fork(server: "Arbiter", worker: DjangoUvicornWorker):
     from prometheus_client import values
 
     values.ValueClass = MultiProcessValue(lambda: worker._worker_id)
+
+    pyroscope_server = os.getenv("PYROSCOPE_SERVER_ADDRESS")
+    if pyroscope_server:
+        pyroscope.configure(
+            application_name="authentik-server",
+            server_address=pyroscope_server,
+            mem_enabled=True,
+        )
 
 
 def worker_exit(server: "Arbiter", worker: DjangoUvicornWorker):
