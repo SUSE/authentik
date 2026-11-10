@@ -7,12 +7,16 @@ from django.contrib.contenttypes.fields import ContentType, GenericForeignKey, G
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_dramatiq_postgres.models import TaskBase, TaskState
+from structlog.stdlib import get_logger
 
 from authentik.events.logs import LogEvent
 from authentik.events.utils import sanitize_item
+from authentik.lib.config import CONFIG
 from authentik.lib.models import SerializerModel
 from authentik.lib.utils.errors import exception_to_dict
 from authentik.tenants.models import Tenant
+
+LOGGER = get_logger()
 
 
 class TaskStatus(models.TextChoices):
@@ -144,6 +148,9 @@ class Task(SerializerModel, TaskBase):
         self.log(self.uid, TaskStatus.ERROR, message, **attributes)
 
 
+USE_STANDARD_LOGGER = CONFIG.get_bool("suse.use_standard_logger", default=False)
+
+
 class TaskLog(models.Model):
     id = models.UUIDField(default=uuid4, primary_key=True, editable=False)
 
@@ -166,9 +173,34 @@ class TaskLog(models.Model):
         return str(self.pk)
 
     @classmethod
+    def standard_logger(cls, task: Task, log_event: LogEvent):
+        caller = LOGGER.info
+        match log_event.log_level:
+            case TaskStatus.WARNING:
+                caller = LOGGER.warn
+            case TaskStatus.REJECTED:
+                caller = LOGGER.error
+            case TaskStatus.ERROR:
+                caller = LOGGER.error
+
+        caller(
+            task_pk=task.pk,
+            task_uid=task.uid,
+            event=log_event.event,
+            event_attributes=sanitize_item(log_event.attributes),
+            logger=log_event.logger,
+            timestamp=log_event.timestamp,
+        )
+
+    @classmethod
     def create_from_log_event(cls, task: Task, log_event: LogEvent) -> Self | None:
         if not task.message:
             return None
+
+        if USE_STANDARD_LOGGER:
+            cls.standard_logger(task, log_event)
+            return None
+
         return cls.objects.create(
             task=task,
             event=log_event.event,
@@ -186,6 +218,12 @@ class TaskLog(models.Model):
     ) -> list[Self] | None:
         if not task.message:
             return None
+
+        if USE_STANDARD_LOGGER:
+            for log_event in log_events:
+                cls.standard_logger(task, log_event)
+            return None
+
         return cls.objects.bulk_create(
             [
                 cls(
