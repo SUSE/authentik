@@ -10,6 +10,7 @@ from orjson import dumps
 from pydantic import ValidationError
 
 from authentik.core.models import Group
+from authentik.lib.config import CONFIG
 from authentik.lib.merge import MERGE_LIST_UNIQUE
 from authentik.lib.sync.mapper import PropertyMappingManager
 from authentik.lib.sync.outgoing.base import Direction
@@ -296,6 +297,13 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
 
     @transaction.atomic
     def patch_compare_users(self, group: Group):
+        if not CONFIG.get_bool("suse.scim.compare_users", default=False):
+            self.logger.warning(
+                "SCIM Compare users is administratively disabled",
+                group=group,
+            )
+            return
+
         """Compare users with a SCIM group and add/remove any differences"""
         # Get scim group first
         scim_group = SCIMProviderGroup.objects.filter(provider=self.provider, group=group).first()

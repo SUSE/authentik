@@ -3,6 +3,7 @@ from django.db.models.query import Q
 from structlog.stdlib import BoundLogger
 
 from authentik.core.models import User
+from authentik.lib.config import CONFIG
 from authentik.lib.sync.outgoing.exceptions import (
     NotFoundSyncException,
 )
@@ -16,6 +17,13 @@ def delete_orphaned_users(logger: BoundLogger, provider: OutgoingSyncProvider):
         logger.warn(
             "Delete orphaned users is not implemented for this OutgoingSyncProvider",
             provider_cls_name=provider_cls_name,
+        )
+        return
+
+    if not CONFIG.get_bool("suse.scim.delete_stale_objects", default=False):
+        logger.warn(
+            "Delete orphaned users is administratively disabled",
+            provider=provider,
         )
         return
 
