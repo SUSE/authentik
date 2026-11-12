@@ -5,6 +5,7 @@ from requests_mock import Mocker
 
 from authentik.blueprints.tests import apply_blueprint
 from authentik.core.models import Application, Group, User
+from authentik.lib.config import CONFIG
 from authentik.lib.generators import generate_id
 from authentik.lib.sync.outgoing.signals import sync_outgoing_inhibit_dispatch
 from authentik.providers.scim.models import SCIMMapping, SCIMProvider, SCIMProviderUser
@@ -43,6 +44,7 @@ class SCIMUserTests(TestCase):
         )
 
     @Mocker()
+    @CONFIG.patch("suse.scim.delete_stale_objects", True)
     def test_user_create_orphan(self, mock: Mocker):
         """Test user creation"""
         scim_id = generate_id()
@@ -129,6 +131,7 @@ class SCIMUserTests(TestCase):
         self.assertEqual(mock.request_history[4].url, f"https://localhost/Users/{scim_id}")
 
     @Mocker()
+    @CONFIG.patch("suse.scim.delete_stale_objects", True)
     def test_sync_task_incremental(self, mock: Mocker):
         """Test sync tasks"""
         user_scim_id = generate_id()
