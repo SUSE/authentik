@@ -4,6 +4,7 @@ import threading
 import time
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
+from random import shuffle
 from typing import Any, ParamSpec, TypeVar, cast
 
 import tenacity
@@ -342,21 +343,23 @@ class _PostgresConsumer(Consumer):
         if self.broker.ignored_actors:
             condition &= ~(Q(actor_name__in=self.broker.ignored_actors))
 
-        pending = set(
+        pending = list(
             self.query_set.exclude(message_id__in=self.in_processing)
             .filter(condition)
             .exclude(state__in=(TaskState.DONE, TaskState.REJECTED))
             .exclude(eta__gte=timezone.now() + timedelta(seconds=self.timeout))
             .order_by(F("eta").asc(nulls_first=True))
-            .values_list("message_id", flat=True)[:count]
+            .values_list("message_id", flat=True)[: self.prefetch]
         )
+        shuffle(pending)
+
         self.logger.debug(
             "Finished fetching pending messages in queue",
             count=count,
             pending=len(pending),
             queue=self.queue_name,
         )
-        return {str(message_id) for message_id in pending}
+        return [str(message_id) for message_id in pending[:count]]
 
     def track_in_processing(self, message_id):
         self.logger.debug(
@@ -568,10 +571,12 @@ class _PostgresConsumer(Consumer):
             return
         if timezone.now() - self.scheduler_last_run < self.scheduler_interval:
             return
+        self.logger.info("Running scheduler")
         self.scheduler.run()
         self.scheduler_last_run = timezone.now()
 
     def _purge_locks(self) -> None:
+        self.logger.info("Purging locks")
         while True:
             try:
                 message_id = self.to_unlock.pop()
@@ -583,7 +588,7 @@ class _PostgresConsumer(Consumer):
     def _auto_purge(self) -> None:
         if timezone.now() - self.task_purge_last_run < self.task_purge_interval:
             return
-        self.logger.debug("Running garbage collector")
+        self.logger.info("Running garbage collector")
         log_count = TaskLog.objects.filter(
             task__state__in=(TaskState.DONE, TaskState.REJECTED),
             task__mtime__lte=timezone.now() - timedelta(seconds=Conf().task_expiration),
