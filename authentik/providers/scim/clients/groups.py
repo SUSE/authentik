@@ -297,7 +297,7 @@ class SCIMGroupClient(SCIMClient[Group, SCIMProviderGroup, SCIMGroupSchema]):
 
     @transaction.atomic
     def patch_compare_users(self, group: Group):
-        if not CONFIG.get_bool("suse.scim.compare_users", default=False):
+        if not CONFIG.get_bool("suse.scim.compare_users", default=True):
             self.logger.warning(
                 "SCIM Compare users is administratively disabled",
                 group=group,
