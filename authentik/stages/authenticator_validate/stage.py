@@ -201,6 +201,12 @@ class AuthenticatorValidateStageView(ChallengeStageView):
             if isinstance(device, SMSDevice) and device.is_hashed:
                 self.logger.debug("Hashed SMS device, skipping", device=device)
                 continue
+
+            if isinstance(device, EmailDevice) and device.email != pending_user.email:
+                self.logger.info("Email device not matching user e-mail", device=device)
+                device.delete()
+                continue
+
             allowed_devices.append(device)
             # Ignore WebAuthn devices which are not in the allowed types
             if (
