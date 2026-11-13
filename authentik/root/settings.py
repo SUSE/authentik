@@ -552,7 +552,12 @@ def _update_settings(app_path: str) -> None:
         pass
 
 
-for app in ["authentik.suse.sources.ldap", "authentik.suse.provider", "authentik.suse.api_extensions"]:
+for app in [
+    "authentik.suse.sources.ldap",
+    "authentik.suse.provider",
+    "authentik.suse.api_extensions",
+    "authentik.suse.integrity",
+]:
     TENANT_APPS.insert(TENANT_APPS.index("authentik.events"), app)
 
 
