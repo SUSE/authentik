@@ -36,7 +36,7 @@ class ErrorDetailSerializer(PassiveSerializer):
     """Serializer for rest_framework's error messages"""
 
     string = CharField()
-    code = CharField()
+    code = CharField(default="invalid")
 
 
 class ContextualFlowInfo(PassiveSerializer):
