@@ -39,6 +39,7 @@ middleware_pivot = next(
 )
 
 middlewares = (
+    ("authentik.suse.worker.task_middlewares.PyroscopeWorkerMiddleware", {}),
     *(BASE_DRAMATIQ["middlewares"][:middleware_pivot]),
     ("authentik.suse.worker.task_middlewares.AckWithBroker", {}),
     *(BASE_DRAMATIQ["middlewares"][middleware_pivot:]),
