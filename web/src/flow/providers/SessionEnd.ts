@@ -37,13 +37,24 @@ export class SessionEnd extends BaseStage<SessionEndChallenge, unknown> {
                 ${FlowUserDetails({ challenge: this.challenge })}
 
                 <p>
-                    ${msg(
-                        str`You've logged out of ${challenge.applicationName}. You can go back to the overview to launch another application, or log out of your authentik account.`,
-                    )}
+                    You've logged out of ${challenge.applicationName}.
+                </p>
+                <p>
+                    You can go to the overview to launch another application, log back in to ${challenge.applicationName}, or log out of your ${challenge.brandName} account.
                 </p>
                 <a href="${globalAK().api.base}" class="pf-c-button pf-m-primary">
-                    ${msg("Go back to overview")}
+                    ${msg("Go to overview")}
                 </a>
+                ${challenge.applicationLaunchUrl && challenge.applicationName
+                    ? html`
+                          <a
+                              href="${challenge.applicationLaunchUrl}"
+                              class="pf-c-button pf-m-secondary"
+                          >
+                              ${msg(str`Log back in to ${challenge.applicationName}`)}
+                          </a>
+                      `
+                    : nothing}
                 ${challenge.invalidationFlowUrl
                     ? html`
                           <a
@@ -52,16 +63,6 @@ export class SessionEnd extends BaseStage<SessionEndChallenge, unknown> {
                               id="logout"
                           >
                               ${msg(str`Log out of ${challenge.brandName}`)}
-                          </a>
-                      `
-                    : nothing}
-                ${challenge.applicationLaunchUrl && challenge.applicationName
-                    ? html`
-                          <a
-                              href="${challenge.applicationLaunchUrl}"
-                              class="pf-c-button pf-m-secondary"
-                          >
-                              ${msg(str`Log back into ${challenge.applicationName}`)}
                           </a>
                       `
                     : nothing}
