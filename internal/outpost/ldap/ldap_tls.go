@@ -4,15 +4,22 @@ import (
 	"crypto/tls"
 	"net"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/pires/go-proxyproto"
 	"goauthentik.io/internal/config"
 	"goauthentik.io/internal/utils"
 )
 
 func (ls *LDAPServer) getCertificates(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	logger := ls.log.WithFields(log.Fields{
+		"client":      info.Conn.RemoteAddr().String(),
+		"server-name": info.ServerName,
+	})
+
 	if len(ls.providers) == 1 {
 		if ls.providers[0].cert != nil {
-			ls.log.WithField("server-name", info.ServerName).Debug("We only have a single provider, using their cert")
+			logger.Debug("We only have a single provider, using their cert")
 			return ls.providers[0].cert, nil
 		}
 	}
@@ -21,7 +28,7 @@ func (ls *LDAPServer) getCertificates(info *tls.ClientHelloInfo) (*tls.Certifica
 	for _, provider := range ls.providers {
 		if provider.tlsServerName == &info.ServerName {
 			if provider.cert == nil {
-				ls.log.WithField("server-name", info.ServerName).Debug("Handler does not have a certificate")
+				logger.Debug("Handler does not have a certificate")
 				return ls.defaultCert, nil
 			}
 			return provider.cert, nil
@@ -34,10 +41,10 @@ func (ls *LDAPServer) getCertificates(info *tls.ClientHelloInfo) (*tls.Certifica
 		}
 	}
 	if allIdenticalCerts && firstTLSCert != nil {
-		if firstTLSCert != nil {
+		logger.Debug("all providers have the same keypair, using first keypair")
 		return firstTLSCert, nil
 	}
-	ls.log.WithField("server-name", info.ServerName).Debug("Fallback to default cert")
+	logger.Debug("Fallback to default cert")
 	return ls.defaultCert, nil
 }
 
