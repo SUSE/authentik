@@ -16,6 +16,7 @@ func (ls *LDAPServer) getCertificates(info *tls.ClientHelloInfo) (*tls.Certifica
 			return ls.providers[0].cert, nil
 		}
 	}
+	var firstTLSCert *tls.Certificate
 	allIdenticalCerts := true
 	for _, provider := range ls.providers {
 		if provider.tlsServerName == &info.ServerName {
@@ -25,13 +26,16 @@ func (ls *LDAPServer) getCertificates(info *tls.ClientHelloInfo) (*tls.Certifica
 			}
 			return provider.cert, nil
 		}
+		if firstTLSCert == nil && provider.cert != nil {
+			firstTLSCert = provider.cert
+		}
 		if provider.certUUID != ls.providers[0].certUUID || provider.cert == nil {
 			allIdenticalCerts = false
 		}
 	}
-	if allIdenticalCerts {
-		ls.log.WithField("server-name", info.ServerName).Debug("all providers have the same keypair, using keypair")
-		return ls.providers[0].cert, nil
+	if allIdenticalCerts && firstTLSCert != nil {
+		if firstTLSCert != nil {
+		return firstTLSCert, nil
 	}
 	ls.log.WithField("server-name", info.ServerName).Debug("Fallback to default cert")
 	return ls.defaultCert, nil
