@@ -25,7 +25,7 @@ export class UserSettingsPassword extends AKElement {
         // For this stage we don't need to check for a configureFlow,
         // as the stage won't return any UI Elements if no configureFlow is set.
         return html`<div class="pf-c-card">
-            <div class="pf-c-card__title">${msg("Change your password")}</div>
+            <div class="pf-c-card__title">Password</div>
             <div class="pf-c-card__body">
                 <a
                     href="${ifDefined(this.configureUrl)}${AndNext(
