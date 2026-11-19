@@ -171,6 +171,7 @@ func (ms *MemorySearcher) fetchUsers() {
 			failedUsers = true
 			break
 		}
+		ms.enrichUserGroupsFromCache(&user)
 		suse.SetKeyInMapping(globalUserCache, user.Pk, &user)
 		seenRefs[user.Pk] = sentinel
 	}
@@ -210,6 +211,7 @@ func (ms *MemorySearcher) fetchGroups() {
 				failedGroups = true
 				break
 			}
+			ms.enrichGroupUsersFromCache(&group)
 			suse.SetKeyInMapping(globalGroupCache, group.Pk, &group)
 			seenRefs[group.Pk] = sentinel
 		}
