@@ -4,6 +4,7 @@ from django.test.utils import override_settings
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
+from authentik.core.models import Group, User
 from authentik.core.tests.utils import (
     create_test_admin_user,
     create_test_brand,
@@ -11,6 +12,7 @@ from authentik.core.tests.utils import (
     create_test_user,
 )
 from authentik.flows.models import FlowAuthenticationRequirement, FlowDesignation
+from authentik.tenants.utils import get_current_tenant
 
 
 class TestCoreUsersPasswordPermissions(APITestCase):
@@ -285,7 +287,7 @@ class TestCoreUsersMergeAttributesAPI(APITestCase):
         assert qux == "quax", "Attribute 'qux' did not update"
 
         foo = self.user.attributes.get("foo")
-        assert foo == ["bar"], "Attribute 'bar' was not uniquely apended (duplicates)"
+        assert foo == ["bar"], "Attribute 'bar' was not uniquely appended (duplicates)"
 
     @override_settings(OVERRIDE_ENDPOINT=dict(core_users_partial_update=True))
     def test_patch_attributes_wants_to_replace(self):
@@ -319,3 +321,124 @@ class TestCoreUsersMergeAttributesAPI(APITestCase):
     @override_settings(OVERRIDE_ENDPOINT=dict(core_users_update=True))
     def test_patch_attributes_when_put_overwritten(self):
         self.test_original_patch_attributes()
+
+
+class TestCoreUsersListAPI(APITestCase):
+    """Test user list new behaviors"""
+
+    def setUp(self) -> None:
+        # Gravatar will spawn 3 requests per user:
+        # - one for cache key exists
+        # - one for cache key expire
+        # - one insert on confluct update for the actual value...
+        tenant = get_current_tenant()
+        tenant.avatars = "none"
+        tenant.save()
+
+        self.admin = create_test_admin_user()
+        self.user_one = create_test_user()
+        self.user_two = create_test_user()
+
+        # Speed up seeding the initial state with bulk_create. from 30s down to ~8s
+        Group.objects.bulk_create(
+            [
+                Group(name=f"group-{chunk}-{i}")
+                for i in range(30)
+                for chunk in ("one", "two", "both")
+            ]
+        )
+
+        membership_cls = self.user_one.ak_groups.through
+
+        membership_cls.objects.bulk_create(
+            [
+                *[
+                    membership_cls(user=self.user_one, group_id=g)
+                    for g in Group.objects.filter(name__startswith="group-one-").values_list(
+                        "pk", flat=True
+                    )
+                ],
+                *[
+                    membership_cls(user=self.user_two, group_id=g)
+                    for g in Group.objects.filter(name__startswith="group-two-").values_list(
+                        "pk", flat=True
+                    )
+                ],
+                *[
+                    membership_cls(user=user, group_id=g)
+                    for user in (self.user_one, self.user_two)
+                    for g in Group.objects.filter(name__startswith="group-both-").values_list(
+                        "pk", flat=True
+                    )
+                ],
+            ]
+        )
+
+        User.objects.bulk_create(
+            [
+                User(
+                    name=f"user-{i}",
+                    username=f"user-{i}",
+                    email=f"user-{i}@goauthentik.io",
+                )
+                for i in range(30)
+            ]
+        )
+
+    # Upstream behavior
+    def test_original_list_user(self):
+        self.client.force_login(self.admin)
+
+        with self.assertNumQueries(36):
+            response = self.client.get(reverse("authentik_api:user-list"))
+            self.assertEqual(response.status_code, 200)
+
+        with self.assertNumQueries(49):
+            response = self.client.get(
+                reverse("authentik_api:user-list", query=dict(page_size=100))
+            )
+            self.assertEqual(response.status_code, 200)
+
+    # New behavior: omit group expansion
+    @override_settings(OVERRIDE_ENDPOINT=dict(core_users_list=True))
+    def test_new_list_user(self):
+        self.client.force_login(self.admin)
+
+        with self.assertNumQueries(17):
+            response = self.client.get(
+                reverse("authentik_api:user-list"),
+                headers={
+                    "X-SUSE-API-Users-Expand-Group-Objects": "false",
+                    "X-SUSE-API-Users-Expand-Role-Objects": "false",
+                    "X-SUSE-API-Users-Expand-SuperUser": "false",
+                },
+            )
+            self.assertEqual(response.status_code, 200)
+
+        with self.assertNumQueries(17):
+            response = self.client.get(
+                reverse("authentik_api:user-list", query=dict(page_size=100)),
+                headers={
+                    "X-SUSE-API-Users-Expand-Group-Objects": "false",
+                    "X-SUSE-API-Users-Expand-Role-Objects": "false",
+                    "X-SUSE-API-Users-Expand-SuperUser": "false",
+                },
+            )
+            self.assertEqual(response.status_code, 200)
+
+            first_record = response.json()["results"][0]
+            # make sure we respect the expected response shape
+            groups = first_record.get("groups")
+            assert type(groups) is list, '"groups" is not a list'
+
+            roles = first_record.get("roles")
+            assert type(roles) is list, '"roles" is not a list'
+
+            groups_obj = first_record.get("groups_obj")
+            assert type(groups_obj) is list, '"groups_obj" is not a list'
+
+            roles_obj = first_record.get("roles_obj")
+            assert type(roles_obj) is list, '"roles_obj" is not a list'
+
+            is_superuser = first_record.get("is_superuser")
+            assert type(is_superuser) is bool, '"is_superuser" is not a bool'

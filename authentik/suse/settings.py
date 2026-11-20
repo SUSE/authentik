@@ -88,6 +88,8 @@ CONFIG.log(
 known_endpoints = (
     "core_applications_list",
     "core_applications_check_access_retrieve",
+    "core_groups_list",
+    "core_users_list",
     "core_users_update",
     "core_users_partial_update",
     "core_users_recovery_create",
