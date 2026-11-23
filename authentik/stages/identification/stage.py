@@ -49,13 +49,14 @@ from authentik.stages.captcha.stage import (
     CaptchaChallenge,
     verify_captcha_token,
 )
-from authentik.stages.identification.models import IdentificationStage
+from authentik.stages.identification.models import IdentificationStage, UserFields
 from authentik.stages.identification.signals import identification_failed
 from authentik.stages.password.stage import (
     PLAN_CONTEXT_METHOD,
     PLAN_CONTEXT_METHOD_ARGS,
     authenticate,
 )
+from authentik.suse.stages.identification.utils import get_extra_user_attribute_query
 
 
 class LoginChallengeMixin:
@@ -259,6 +260,10 @@ class IdentificationStageView(ChallengeStageView):
             else:
                 model_field += "__exact"
             query |= Q(**{model_field: uid_value})
+        if UserFields.USERNAME in current_stage.user_fields:
+            query |= get_extra_user_attribute_query(
+                uid_value, case_insensitive=current_stage.case_insensitive_matching
+            )
         if not query:
             self.logger.debug("Empty user query", query=query)
             return None
