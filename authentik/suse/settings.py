@@ -131,3 +131,15 @@ if CONFIG.get("suse.cache_backend", "postgres") == "redis":
             "OPTIONS": opts,
         }
     }
+
+suse_identification_extra_user_attributes = CONFIG.get(
+    "suse.identification.extra_user_attributes", ""
+)
+if suse_identification_extra_user_attributes:
+    SUSE_IDENTIFICATION_EXTRA_USER_ATTRIBUTES = suse_identification_extra_user_attributes.split(",")
+else:
+    SUSE_IDENTIFICATION_EXTRA_USER_ATTRIBUTES = []
+CONFIG.log(
+    "info",
+    f"Loaded SUSE_IDENTIFICATION_EXTRA_USER_ATTRIBUTES={SUSE_IDENTIFICATION_EXTRA_USER_ATTRIBUTES}",
+)
