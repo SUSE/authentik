@@ -1,20 +1,130 @@
 .pf-c-page__header-tools {
     display: flex;
+    align-items: center;
+    gap: var(--pf-global--spacer--xs);
 }
 
-.pf-c-avatar {
-    background-color: var(--pf-global--BackgroundColor--light-200);
+.user-account-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pf-global--spacer--sm);
+    height: 2.25rem;
+    min-height: 2.25rem;
+    max-height: 2.25rem;
+    padding: 0.125rem var(--pf-global--spacer--sm);
+    color: #0c322c;
+    text-decoration: none;
+    border: 1px solid transparent;
+    border-radius: 0;
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease;
+}
+
+.user-account-button:hover,
+.user-account-button:focus-visible,
+.user-account-button[aria-current="page"] {
+    color: #0c322c;
+    text-decoration: none;
+    background-color: inherit;
+    border-color: #fe7c3f;
+}
+
+.user-account-button:focus-visible {
+    outline: 2px solid #fe7c3f;
+    outline-offset: -2px;
+}
+
+.user-account-button--static {
+    cursor: default;
+}
+
+.user-account-button--static:hover,
+.user-account-button--static:focus-visible {
+    background-color: transparent;
+    border-color: transparent;
+}
+
+.user-account-button__icon {
+    flex: 0 0 auto;
+    font-size: 1rem;
+    color: #525252;
+    transition: color 150ms ease;
+}
+
+.user-account-button:hover .user-account-button__icon,
+.user-account-button:focus-visible .user-account-button__icon,
+.user-account-button[aria-current="page"] .user-account-button__icon {
+    color: #fe7c3f;
+}
+
+.user-account-button__details {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    max-width: clamp(8rem, 22vw, 18rem);
+    text-align: left;
+}
+
+.user-account-button__primary {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.15;
+    color: #0c322c;
     overflow: hidden;
-
-    img {
-        width: 100%;
-        height: 100%;
-        aspect-ratio: 1 / 1;
-    }
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-:host([theme="dark"]) {
-    .pf-c-avatar {
-        background-color: var(--pf-global--BackgroundColor--dark-300);
+.user-account-button__secondary {
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.15;
+    margin-top: 1px;
+    color: #0c322c; /* #008657; ? */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+:host([theme="dark"]) .user-account-button {
+    color: #ffffff;
+}
+
+:host([theme="dark"]) .user-account-button:hover,
+:host([theme="dark"]) .user-account-button:focus-visible,
+:host([theme="dark"]) .user-account-button[aria-current="page"] {
+    color: #ffffff;
+    border-color: #fe7c3f;
+}
+
+:host([theme="dark"]) .user-account-button--static:hover,
+:host([theme="dark"]) .user-account-button--static:focus-visible {
+    background-color: transparent;
+    border-color: transparent;
+}
+
+:host([theme="dark"]) .user-account-button__icon {
+    color: #efefef;
+}
+
+:host([theme="dark"]) .user-account-button:hover .user-account-button__icon,
+:host([theme="dark"]) .user-account-button:focus-visible .user-account-button__icon,
+:host([theme="dark"]) .user-account-button[aria-current="page"] .user-account-button__icon {
+    color: #fe7c3f;
+}
+
+:host([theme="dark"]) .user-account-button__primary {
+    color: white;
+}
+
+:host([theme="dark"]) .user-account-button__secondary {
+    color: white;
+}
+
+@media (width < 768px) {
+    .user-account-button__details {
+        display: none;
     }
 }

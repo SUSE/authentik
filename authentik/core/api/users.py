@@ -95,6 +95,7 @@ from authentik.stages.email.flow import pickle_flow_token_for_email
 from authentik.stages.email.models import EmailStage
 from authentik.stages.email.tasks import send_mails
 from authentik.stages.email.utils import TemplateEmailMessage
+from authentik.suse.core.utils import get_suse_user_settings
 from authentik.suse.settings import CONSTRAINTS
 
 LOGGER = get_logger()
@@ -378,7 +379,9 @@ class UserSelfSerializer(ModelSerializer):
 
     def get_settings(self, user: User) -> dict[str, Any]:
         """Get user settings with brand and group settings applied"""
-        return user.group_attributes(self._context["request"]).get("settings", {})
+        return get_suse_user_settings(
+            user, user.group_attributes(self._context["request"]).get("settings", {})
+        )
 
     def get_system_permissions(self, user: User) -> list[str]:
         """Get all system permissions assigned to the user"""

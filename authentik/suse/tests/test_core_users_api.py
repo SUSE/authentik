@@ -319,3 +319,40 @@ class TestCoreUsersMergeAttributesAPI(APITestCase):
     @override_settings(OVERRIDE_ENDPOINT=dict(core_users_update=True))
     def test_patch_attributes_when_put_overwritten(self):
         self.test_original_patch_attributes()
+
+
+class TestUserMeExtraAttributes(APITestCase):
+    """Test UserSelfSerializer exposing extra attributes in user.settings"""
+
+    @override_settings(SUSE_IDENTIFICATION_EXTRA_USER_ATTRIBUTES=["communityUid"])
+    def test_user_me_includes_single_attribute_when_set(self):
+        user = create_test_user()
+        user.attributes["communityUid"] = "communityHandle"
+        user.save()
+
+        self.client.force_login(user)
+        response = self.client.get(reverse("authentik_api:user-me"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["user"]["settings"]["communityUid"], "communityHandle")
+
+    @override_settings(SUSE_IDENTIFICATION_EXTRA_USER_ATTRIBUTES=["communityUid", "miscUid"])
+    def test_user_me_includes_multiple_attributes_when_set(self):
+        user = create_test_user()
+        user.attributes["communityUid"] = "communityHandle"
+        user.attributes["miscUid"] = "miscHandle"
+        user.save()
+
+        self.client.force_login(user)
+        response = self.client.get(reverse("authentik_api:user-me"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["user"]["settings"]["communityUid"], "communityHandle")
+        self.assertEqual(response.json()["user"]["settings"]["miscUid"], "miscHandle")
+
+    @override_settings(SUSE_IDENTIFICATION_EXTRA_USER_ATTRIBUTES=["communityUid"])
+    def test_user_me_omits_attribute_when_not_set(self):
+        user = create_test_user()
+
+        self.client.force_login(user)
+        response = self.client.get(reverse("authentik_api:user-me"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("communityUid", response.json()["user"]["settings"])
