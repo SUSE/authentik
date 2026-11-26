@@ -4,14 +4,16 @@ import "#elements/buttons/ActionButton/ak-action-button";
 import "@patternfly/elements/pf-tooltip/pf-tooltip.js";
 
 import { DEFAULT_CONFIG } from "#common/api/config";
+import { ROUTE_SEPARATOR } from "#common/constants";
 import { globalAK } from "#common/global";
-import { formatUserDisplayName } from "#common/users";
 
 import { AKElement } from "#elements/Base";
+import { listen } from "#elements/decorators/listen";
 import { WithNotifications } from "#elements/mixins/notifications";
 import { WithSession } from "#elements/mixins/session";
 import { AKDrawerChangeEvent } from "#elements/notifications/events";
-import { isDefaultAvatar } from "#elements/utils/images";
+import { RouteChangeEvent } from "#elements/router/events";
+import { isUserRoute } from "#elements/router/utils";
 
 import Styles from "#components/ak-nav-button.css";
 
@@ -19,10 +21,9 @@ import { CoreApi } from "@goauthentik/api";
 
 import { msg } from "@lit/localize";
 import { html, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { guard } from "lit/directives/guard.js";
 
-import PFAvatar from "@patternfly/patternfly/components/Avatar/avatar.css";
 import PFBrand from "@patternfly/patternfly/components/Brand/brand.css";
 import PFButton from "@patternfly/patternfly/components/Button/button.css";
 import PFDrawer from "@patternfly/patternfly/components/Drawer/drawer.css";
@@ -40,18 +41,35 @@ export class NavigationButtons extends WithNotifications(WithSession(AKElement))
     @property({ type: Boolean, reflect: true })
     apiDrawerOpen = false;
 
+    @state()
+    protected settingsOpen = this.#isSettingsOpen();
+
+    @listen(RouteChangeEvent)
+    @listen("hashchange")
+    protected syncSettingsRouteState = () => {
+        this.settingsOpen = this.#isSettingsOpen();
+    };
+
     static styles = [
         PFBase,
         PFDisplay,
         PFBrand,
         PFPage,
-        PFAvatar,
         PFButton,
         PFDrawer,
         PFDropdown,
         PFNotificationBadge,
         Styles,
     ];
+
+    #isSettingsOpen(): boolean {
+        if (!isUserRoute()) {
+            return false;
+        }
+
+        const [activePath] = window.location.hash.slice(1).split(ROUTE_SEPARATOR);
+        return activePath === "/settings";
+    }
 
     protected renderAPIDrawerTrigger() {
         const { apiDrawer } = this.uiConfig.enabledFeatures;
@@ -127,25 +145,6 @@ export class NavigationButtons extends WithNotifications(WithSession(AKElement))
         });
     }
 
-    renderSettings() {
-        if (!this.uiConfig?.enabledFeatures.settings) {
-            return nothing;
-        }
-
-        return html`<div class="pf-c-page__header-tools-item">
-            <a
-                class="pf-c-button pf-m-plain"
-                type="button"
-                href="${globalAK().api.base}if/user/#/settings"
-                aria-label=${msg("Settings")}
-            >
-                <pf-tooltip position="top" content=${msg("Settings")}>
-                    <i class="fas fa-cog" aria-hidden="true"></i>
-                </pf-tooltip>
-            </a>
-        </div>`;
-    }
-
     renderImpersonation() {
         if (!this.impersonating) return nothing;
 
@@ -164,41 +163,87 @@ export class NavigationButtons extends WithNotifications(WithSession(AKElement))
             </div>`;
     }
 
-    renderAvatar() {
-        const { currentUser } = this;
+    #getCommunityUid(): string {
+        const userSettings = this.currentUser?.settings as Record<string, unknown> | undefined;
+        if (!userSettings) {
+            return "";
+        }
 
+        const configuredAttr = window?.custom_user_settings?.fields?.community?.name;
+        const rawValue =
+            (configuredAttr ? userSettings[configuredAttr] : undefined) ??
+            userSettings.communityUid;
+
+        return typeof rawValue === "string" ? rawValue.trim() : "";
+    }
+
+    protected renderUserAccountControl() {
+        const { currentUser } = this;
         if (!currentUser) {
             return nothing;
         }
 
-        const { avatar } = currentUser;
+        const username = currentUser.username || "";
+        const communityUid = this.#getCommunityUid();
+        const settingsEnabled = !!this.uiConfig?.enabledFeatures.settings;
 
-        if (!avatar || isDefaultAvatar(avatar)) {
+        if (!username && !settingsEnabled) {
             return nothing;
         }
 
-        return html`<div
-            class="pf-c-page__header-tools-item pf-c-avatar pf-m-hidden pf-m-visible-on-xl"
-            aria-hidden="true"
-        >
-            <img src=${avatar} alt=${msg("Avatar image")} />
+        const userDetails = username
+            ? html`<span class="user-account-button__details">
+                  <span class="user-account-button__primary">${username}</span>
+                  ${communityUid
+                      ? html`<span class="user-account-button__secondary">${communityUid}</span>`
+                      : nothing}
+              </span>`
+            : nothing;
+
+        if (!settingsEnabled) {
+            return html`<div class="pf-c-page__header-tools-item">
+                <span class="user-account-button user-account-button--static">
+                    ${userDetails}
+                </span>
+            </div>`;
+        }
+
+        const targetHref = this.settingsOpen
+            ? `${globalAK().api.base}if/user/#/library`
+            : `${globalAK().api.base}if/user/#/settings`;
+
+        const label = [
+            this.settingsOpen ? msg("Close settings") : msg("Settings"),
+            username ? (communityUid ? `${username} (${communityUid})` : username) : "",
+        ]
+            .filter(Boolean)
+            .join(" — ");
+
+        return html`<div class="pf-c-page__header-tools-item">
+            <a
+                class="user-account-button"
+                href=${targetHref}
+                aria-current=${this.settingsOpen ? "page" : nothing}
+                aria-label=${label}
+                title=${label}
+            >
+                <i class="fas fa-cog user-account-button__icon" aria-hidden="true"></i>
+                ${userDetails}
+            </a>
         </div>`;
     }
 
     render() {
-        const displayName = formatUserDisplayName(this.currentUser, this.uiConfig);
-
         return html`<div role="presentation" class="pf-c-page__header-tools">
             <div class="pf-c-page__header-tools-group">
                 ${this.renderAPIDrawerTrigger()}
                 <!-- -->
                 ${this.renderNotificationDrawerTrigger()}
-                <!-- -->
-                ${this.renderSettings()}
                 <div class="pf-c-page__header-tools-item">
                     <a
                         href="${globalAK().api.base}flows/-/default/invalidation/"
                         class="pf-c-button pf-m-plain"
+                        aria-label=${msg("Sign out")}
                     >
                         <pf-tooltip position="top" content=${msg("Sign out")}>
                             <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
@@ -207,15 +252,7 @@ export class NavigationButtons extends WithNotifications(WithSession(AKElement))
                 </div>
                 <slot name="extra"></slot>
             </div>
-            ${this.renderImpersonation()}
-            ${displayName
-                ? html`<div class="pf-c-page__header-tools-group pf-m-hidden">
-                      <div class="pf-c-page__header-tools-item pf-m-visible-on-2xl">
-                          ${displayName}
-                      </div>
-                  </div>`
-                : nothing}
-            ${this.renderAvatar()}
+            ${this.renderImpersonation()} ${this.renderUserAccountControl()}
         </div>`;
     }
 }
