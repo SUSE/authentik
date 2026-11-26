@@ -50,6 +50,7 @@ func userEntry(dn string, u api.User, baseDN string) *ldap.Entry {
 			constants.OCPosixAccount,
 			constants.OCAKUser,
 		},
+		"ak-primary-mail": {*u.Email},
 		"sn":              {u.Name},
 		"pwdChangedTime":  {u.PasswordChangeDate.In(time.UTC).Format("20060102150405Z")},
 		"createTimestamp": {u.DateJoined.In(time.UTC).Format("20060102150405Z")},
