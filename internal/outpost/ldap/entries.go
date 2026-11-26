@@ -52,6 +52,7 @@ func (pi *ProviderInstance) UserEntry(u api.User) *ldap.Entry {
 			constants.OCPosixAccount,
 			constants.OCAKUser,
 		},
+		"ak-primary-mail": {*u.Email},
 		"uidNumber":       {pi.GetUserUidNumber(u)},
 		"gidNumber":       {pi.GetUserGidNumber(u)},
 		"homeDirectory":   {fmt.Sprintf("/home/%s", u.Username)},
