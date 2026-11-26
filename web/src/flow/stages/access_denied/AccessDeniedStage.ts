@@ -50,7 +50,7 @@ export class AccessDeniedStage extends BaseStage<
         try {
             errorData = JSON.parse(errorConfig);
         } catch (error) {
-            console.log(`Failed to parse error data - error: ${error}.`);
+            this.logger.info(`Failed to parse error data - error: ${error}.`);
             errorData =
                 "We failed to serve more useful information about this error. This should not happen.";
         }
@@ -83,7 +83,7 @@ export class AccessDeniedStage extends BaseStage<
                         break;
 
                     default:
-                        console.log(`Unknown error data type "${errorData.type}".`);
+                        this.logger.info(`Unknown error data type "${errorData.type}".`);
 
                         break;
                 }

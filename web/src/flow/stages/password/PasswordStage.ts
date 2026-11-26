@@ -1,7 +1,6 @@
 import "#flow/FormStatic";
 import "#flow/components/ak-flow-card";
 import "#flow/components/ak-flow-password-input";
-
 import "#flow/components/suse-ak-banner";
 
 import { ErrorProp } from "#components/ak-field-errors";
@@ -45,7 +44,6 @@ export class PasswordStage extends BaseStage<PasswordChallenge, PasswordChalleng
     render(): TemplateResult {
         return html`<ak-flow-card .challenge=${this.challenge}>
             <form class="pf-c-form" @submit=${this.submitForm}>
-
                 <suse-ak-banner .recoveryUrl=${this.challenge?.recoveryUrl}></suse-ak-banner>
 
                 ${FlowUserDetails({ challenge: this.challenge })}
