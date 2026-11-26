@@ -54,6 +54,7 @@ dependencies = [
   "pydantic==2.11.7",
   "pyjwt==2.10.1",
   "pyrad==2.4",
+  "pyroscope-io>=1.4.0",
   "python-kadmin-rs==0.7.0",
   "pyyaml==6.0.2",
   "requests-oauthlib==2.0.0",
