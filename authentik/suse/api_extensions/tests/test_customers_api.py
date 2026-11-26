@@ -317,9 +317,7 @@ class TestUsersAPI(APITestCase):
             "firstName": "Melissa",
             "lastName": "Amos",
             "phone": "906-343-0104",
-            "title": "Tax assessor",
             "address": {
-                "state": "Michigan",
                 "street": "2009 Wood Duck Drive",
                 "country": "US",
                 "locality": "Sand River",
@@ -340,11 +338,11 @@ class TestUsersAPI(APITestCase):
             "firstName": "Melissa",
             "lastName": "Amos",
             "phone": "906-343-0104",
-            "title": "Tax assessor",
+            "title": None,
             "partnerId": None,
             "company": None,
             "address": {
-                "state": "Michigan",
+                "state": None,
                 "street": "2009 Wood Duck Drive",
                 "country": "US",
                 "locality": "Sand River",

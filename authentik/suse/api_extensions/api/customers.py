@@ -52,7 +52,7 @@ class ConflictError(ValidationError):
 class AddressSerializer(serializers.Serializer):
     state = CharField(
         max_length=150,
-        required=True,
+        required=False,
     )
 
     street = CharField(
@@ -116,7 +116,7 @@ class CustomerSerializer(serializers.Serializer):
 
     title = CharField(
         max_length=150,
-        required=True,
+        required=False,
     )
 
     company = CharField(
@@ -170,11 +170,17 @@ class CustomerSerializer(serializers.Serializer):
         last_name = validated_data.get("lastName", old_attrs.get("sn"))
         full_name = f"{first_name} {last_name}"
 
-        fallback = None
+        fallback_company = None
         if self.partial:
-            fallback = old_attrs.get("organization")
+            fallback_company = old_attrs.get("organization")
 
-        company = validated_data.get("company", fallback)
+        company = validated_data.get("company", fallback_company)
+
+        fallback_title = None
+        if self.partial:
+            fallback_title = old_attrs.get("title")
+
+        title = validated_data.get("title", fallback_title)
 
         address_serializer = AddressSerializer(partial=self.partial)
 
@@ -183,7 +189,7 @@ class CustomerSerializer(serializers.Serializer):
             "givenName": first_name,
             "sn": last_name,
             "telephoneNumber": validated_data.get("phone", old_attrs.get("telephoneNumber")),
-            "title": validated_data.get("title", old_attrs.get("title")),
+            "title": title,
             "organization": company,
             "address": address_serializer.update(
                 old_attrs.get("address"), validated_data.get("address")
@@ -279,7 +285,7 @@ class CreateCustomerSerializer(CustomerSerializer):
                 "telephoneNumber": validated_data["phone"],
                 "organization": validated_data.get("company"),
                 "partnerId": validated_data.get("partnerId"),
-                "title": validated_data["title"],
+                "title": validated_data.get("title"),
                 "address": AddressSerializer().to_internal_value(validated_data["address"]),
                 "uuid": str(user_uuid),
                 "is_verified": False,
